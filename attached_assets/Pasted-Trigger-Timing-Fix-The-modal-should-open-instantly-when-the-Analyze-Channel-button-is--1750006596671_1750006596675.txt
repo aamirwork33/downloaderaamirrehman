@@ -1,0 +1,61 @@
+Trigger Timing Fix**
+   - The modal should **open instantly** when the "Analyze Channel" button is clicked — don't wait for data to load.
+   - Inside the modal, show loading spinners or shimmer skeletons until channel data is fully loaded.
+
+2. **Channel Metadata UI**
+   - At the top of the modal, show:
+     - **Channel avatar**
+     - **Channel name**
+     - **Subscriber count**
+     - **Total video count**
+   - Use circular avatar, bold name, and soft subtitle text.
+   - All this should appear using a loader placeholder if data isn't yet ready.
+
+3. **Dynamic Tabs**
+   - Include 3 tabs: **All Videos**, **Shorts**, **Playlists**
+   - Each tab should load progressively and switch with a smooth transition (e.g., fade or slide)
+   - Active tab must have visual indication (purple/gradient highlight)
+
+4. **Video List Design Fixes**
+   - Show each video as a **card or row** containing:
+     - Left: **Thumbnail image** (fix: broken thumbnails in current version)
+     - Middle: **Title** (clickable), and meta info below it: duration, views, upload date
+     - Right: **Checkbox** to select individual items
+   - Add small duration tag on the thumbnail (e.g., 2:05)
+
+5. **Loader UX Enhancements**
+   - While fetching channel data:
+     - Show a spinner or skeleton loader for each upcoming item.
+     - Add animated "Loading videos..." label in each tab section.
+     - Don't wait to load all videos before rendering — load paginated/lazy style or batch.
+
+6. **Batch Selection Options**
+   - Add **Select All / Unselect All** buttons with clear spacing
+   - Add **Sort dropdown** (e.g., Title, Date, Views)
+   - Add **Search field** (instant filter by video title)
+
+7. **Bottom Summary Bar**
+   - At bottom of the modal, show:
+     - “X videos selected — Estimated size: X MB”
+     - Format dropdowns (MP4, MP3, 720p, etc.)
+     - A big **"Download Selected"** button with success/error feedback after click
+
+8. **Styling/UI Improvements**
+   - Use **modern glassmorphism** or soft neumorphism (with shadow, border-radius, blur)
+   - Responsive grid using Flex or Grid (auto-fit video cards in rows)
+   - Consistent theme with app (purple-blue gradient, "Inter" font)
+   - Apply smooth transitions using **Framer Motion** or **CSS transitions**
+
+---
+
+🧠 Backend Notes:
+- The `/api/analyze-channel` endpoint should return data in **streamed batches** or allow frontend to render in parts.
+- Each video object should include: title, thumbnail URL (ensure valid), video ID, duration, view count, publish date.
+
+---
+
+✨ Final Result Should:
+- Open immediately, load smoothly in steps
+- Display real channel info with polished visuals
+- Make the user feel confident selecting and downloading content
+- Be mobile-friendly and performance-optimized

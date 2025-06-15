@@ -252,53 +252,131 @@ class StreamVault {
             return;
         }
         
-        this.showLoadingModal('Analyzing content...');
+        // Determine if this is a channel URL and open modal immediately for channels
+        const isChannel = url.includes('/channel/') || url.includes('/c/') || url.includes('/@') || url.includes('/user/');
         
-        try {
-            const response = await fetch('/api/analyze-playlist', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ url })
-            });
+        if (isChannel) {
+            // Open modal immediately for channels
+            this.showChannelAnalyzerModal(true); // true = loading state
             
-            const data = await response.json();
-            
-            if (data.success) {
-                this.currentPlaylistInfo = data.playlist;
+            try {
+                const response = await fetch('/api/analyze-playlist', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ url })
+                });
                 
-                // Check if this is a channel or simple playlist
-                if (data.playlist.type === 'channel') {
+                const data = await response.json();
+                
+                if (data.success && data.playlist.type === 'channel') {
                     this.channelData = data.playlist;
-                    this.showChannelAnalyzerModal();
+                    this.populateChannelData();
+                    this.showToast('Channel analyzed successfully!', 'success');
                 } else {
+                    throw new Error(data.error || 'Channel analysis failed');
+                }
+            } catch (error) {
+                console.error('Channel analysis error:', error);
+                this.showToast(`Analysis failed: ${error.message}`, 'error');
+                // Close modal on error
+                const modal = bootstrap.Modal.getInstance(document.getElementById('channelAnalyzerModal'));
+                if (modal) modal.hide();
+            }
+        } else {
+            // For playlists, use the loading modal
+            this.showLoadingModal('Analyzing playlist...');
+            
+            try {
+                const response = await fetch('/api/analyze-playlist', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ url })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    this.currentPlaylistInfo = data.playlist;
                     this.displayPlaylistInfo(data.playlist);
                     document.getElementById('playlistDownloadBtn').disabled = false;
                     this.showToast(`Found ${data.playlist.entry_count} videos in playlist!`, 'success');
+                } else {
+                    throw new Error(data.error || 'Playlist analysis failed');
                 }
-            } else {
-                throw new Error(data.error || 'Analysis failed');
+            } catch (error) {
+                console.error('Playlist analysis error:', error);
+                this.showToast(`Analysis failed: ${error.message}`, 'error');
+            } finally {
+                this.hideLoadingModal();
             }
-        } catch (error) {
-            console.error('Analysis error:', error);
-            this.showToast(`Analysis failed: ${error.message}`, 'error');
-        } finally {
-            this.hideLoadingModal();
         }
     }
     
-    showChannelAnalyzerModal() {
-        if (!this.channelData) return;
-        
+    showChannelAnalyzerModal(loading = false) {
         const modal = new bootstrap.Modal(document.getElementById('channelAnalyzerModal'));
-        
-        // Populate channel header
-        this.populateChannelHeader();
         
         // Reset selections
         this.selectedVideos.clear();
         this.currentTab = 'all-videos';
+        
+        if (loading) {
+            // Show loading skeleton
+            this.showChannelLoadingSkeleton();
+        } else if (this.channelData) {
+            // Populate with actual data
+            this.populateChannelData();
+        }
+        
+        // Show modal
+        modal.show();
+    }
+    
+    showChannelLoadingSkeleton() {
+        // Show loading skeleton for channel header
+        document.getElementById('channelName').innerHTML = '<div class="skeleton-text skeleton-text-lg"></div>';
+        document.getElementById('channelAvatar').src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMzIiIGN5PSIzMiIgcj0iMzIiIGZpbGw9IiNFNUU3RUIiLz4KPHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgZmlsbD0ibm9uZSI+CjxyZWN0IHdpZHRoPSI2NCIgaGVpZ2h0PSI2NCIgcng9IjMyIiBmaWxsPSIjRjNGNEY2Ii8+CjxyZWN0IHg9IjE2IiB5PSIxNiIgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iMTYiIGZpbGw9IiNEREREREQiLz4KPC9zdmc+';
+        document.getElementById('subscriberCount').innerHTML = '<div class="skeleton-text skeleton-text-sm"></div>';
+        document.getElementById('totalVideoCount').innerHTML = '<div class="skeleton-text skeleton-text-sm"></div>';
+        
+        // Show loading for tab counts
+        document.getElementById('allVideosCount').textContent = '...';
+        document.getElementById('shortsCount').textContent = '...';
+        document.getElementById('playlistsCount').textContent = '...';
+        
+        // Show loading content in video grids
+        this.showLoadingInGrids();
+    }
+    
+    showLoadingInGrids() {
+        const grids = ['allVideosGrid', 'shortsGrid', 'playlistsGrid'];
+        
+        grids.forEach(gridId => {
+            const grid = document.getElementById(gridId);
+            grid.innerHTML = `
+                <div class="video-grid loading">
+                    <div class="loading-spinner"></div>
+                    <p class="mt-3 text-muted">Loading videos...</p>
+                </div>
+            `;
+        });
+        
+        // Disable controls during loading
+        document.getElementById('selectAllBtn').disabled = true;
+        document.getElementById('unselectAllBtn').disabled = true;
+        document.getElementById('downloadSelectedBtn').disabled = true;
+        document.getElementById('sortSelect').disabled = true;
+        document.getElementById('searchInput').disabled = true;
+    }
+    
+    populateChannelData() {
+        if (!this.channelData) return;
+        
+        // Populate channel header
+        this.populateChannelHeader();
         
         // Update counts
         this.updateTabCounts();
@@ -306,10 +384,11 @@ class StreamVault {
         // Load initial videos
         this.updateVideoDisplay();
         
-        // Show modal
-        modal.show();
-        
-        this.showToast('Channel analyzed successfully!', 'success');
+        // Enable controls
+        document.getElementById('selectAllBtn').disabled = false;
+        document.getElementById('unselectAllBtn').disabled = false;
+        document.getElementById('sortSelect').disabled = false;
+        document.getElementById('searchInput').disabled = false;
     }
     
     populateChannelHeader() {
@@ -395,22 +474,27 @@ class StreamVault {
         
         const videosHtml = this.filteredVideos.map(video => {
             const isSelected = this.selectedVideos.has(video.id);
-            const thumbnail = video.thumbnail || 'https://via.placeholder.com/120x68?text=No+Image';
+            const thumbnail = this.getValidThumbnail(video);
+            const safeTitle = this.escapeHtml(video.title);
             
             return `
-                <div class="video-item ${isSelected ? 'selected' : ''}" data-video-id="${video.id}">
+                <div class="video-item ${isSelected ? 'selected' : ''}" data-video-id="${video.id}" onclick="streamVault.toggleVideoSelection('${video.id}')">
                     <input type="checkbox" class="form-check-input video-checkbox" 
                            ${isSelected ? 'checked' : ''} 
-                           onchange="streamVault.toggleVideoSelection('${video.id}')">
+                           onclick="event.stopPropagation();">
                     <div class="position-relative">
-                        <img src="${thumbnail}" alt="${video.title}" class="video-thumbnail" loading="lazy">
+                        <img src="${thumbnail}" 
+                             alt="${safeTitle}" 
+                             class="video-thumbnail" 
+                             loading="lazy"
+                             onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjY4IiB2aWV3Qm94PSIwIDAgMTIwIDY4IiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8cmVjdCB3aWR0aD0iMTIwIiBoZWlnaHQ9IjY4IiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik00OCAzNEw2MCAyN1Y0MUw0OCAzNFoiIGZpbGw9IiM5Q0EzQUYiLz4KPC9zdmc+';">
                         ${video.duration ? `<span class="video-duration">${this.formatDuration(video.duration)}</span>` : ''}
                     </div>
                     <div class="video-info">
-                        <div class="video-title">${video.title}</div>
+                        <div class="video-title" title="${safeTitle}">${safeTitle}</div>
                         <div class="video-meta">
-                            ${video.view_count ? `<span>${this.formatCount(video.view_count)} views</span>` : ''}
-                            ${video.upload_date ? `<span>${this.formatDate(video.upload_date)}</span>` : ''}
+                            ${video.view_count ? `<span><i class="fas fa-eye me-1"></i>${this.formatCount(video.view_count)} views</span>` : ''}
+                            ${video.upload_date ? `<span><i class="fas fa-calendar me-1"></i>${this.formatDate(video.upload_date)}</span>` : ''}
                         </div>
                     </div>
                 </div>
@@ -418,6 +502,39 @@ class StreamVault {
         }).join('');
         
         grid.innerHTML = videosHtml;
+        
+        // Add smooth entrance animation
+        setTimeout(() => {
+            grid.querySelectorAll('.video-item').forEach((item, index) => {
+                item.style.animationDelay = `${index * 0.05}s`;
+                item.classList.add('slide-in');
+            });
+        }, 50);
+    }
+    
+    getValidThumbnail(video) {
+        // Try different thumbnail sources
+        if (video.thumbnail) {
+            // For YouTube videos, ensure we get a good quality thumbnail
+            if (video.thumbnail.includes('youtube') || video.thumbnail.includes('ytimg')) {
+                return video.thumbnail;
+            }
+            return video.thumbnail;
+        }
+        
+        // Generate thumbnail from video ID if available
+        if (video.id && video.webpage_url && video.webpage_url.includes('youtube')) {
+            return `https://img.youtube.com/vi/${video.id}/mqdefault.jpg`;
+        }
+        
+        // Fallback to a clean SVG placeholder
+        return 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjY4IiB2aWV3Qm94PSIwIDAgMTIwIDY4IiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8cmVjdCB3aWR0aD0iMTIwIiBoZWlnaHQ9IjY4IiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik00OCAzNEw2MCAyN1Y0MUw0OCAzNFoiIGZpbGw9IiM5Q0EzQUYiLz4KPC9zdmc+';
+    }
+    
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
     
     toggleVideoSelection(videoId) {
