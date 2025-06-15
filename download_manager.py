@@ -222,39 +222,40 @@ class DownloadManager:
             self.downloads[download_id]['process'] = process
             
             # Monitor progress
-            for line in process.stdout:
-                line = line.strip()
-                if not line:
-                    continue
-                
-                # Parse progress information
-                if '[download]' in line and '%' in line:
-                    try:
-                        # Extract progress percentage
-                        if 'of' in line:
-                            parts = line.split()
-                            for i, part in enumerate(parts):
-                                if '%' in part:
-                                    progress = float(part.replace('%', ''))
-                                    self.downloads[download_id]['progress'] = progress
-                                    
-                                    # Extract speed and ETA if available
-                                    if i + 1 < len(parts) and ('KiB/s' in parts[i + 1] or 'MiB/s' in parts[i + 1]):
-                                        self.downloads[download_id]['speed'] = parts[i + 1]
-                                    
-                                    if 'ETA' in line:
-                                        eta_idx = line.find('ETA') + 4
-                                        eta = line[eta_idx:].split()[0]
-                                        self.downloads[download_id]['eta'] = eta
-                                    
-                                    break
-                    except (ValueError, IndexError):
-                        pass
-                
-                # Extract filename
-                elif 'Destination:' in line:
-                    filename = line.split('Destination:')[1].strip()
-                    self.downloads[download_id]['filename'] = os.path.basename(filename)
+            if process.stdout:
+                for line in process.stdout:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    
+                    # Parse progress information
+                    if '[download]' in line and '%' in line:
+                        try:
+                            # Extract progress percentage
+                            if 'of' in line:
+                                parts = line.split()
+                                for i, part in enumerate(parts):
+                                    if '%' in part:
+                                        progress = float(part.replace('%', ''))
+                                        self.downloads[download_id]['progress'] = progress
+                                        
+                                        # Extract speed and ETA if available
+                                        if i + 1 < len(parts) and ('KiB/s' in parts[i + 1] or 'MiB/s' in parts[i + 1]):
+                                            self.downloads[download_id]['speed'] = parts[i + 1]
+                                        
+                                        if 'ETA' in line:
+                                            eta_idx = line.find('ETA') + 4
+                                            eta = line[eta_idx:].split()[0]
+                                            self.downloads[download_id]['eta'] = eta
+                                        
+                                        break
+                        except (ValueError, IndexError):
+                            pass
+                    
+                    # Extract filename
+                    elif 'Destination:' in line:
+                        filename = line.split('Destination:')[1].strip()
+                        self.downloads[download_id]['filename'] = os.path.basename(filename)
             
             # Wait for process to complete
             return_code = process.wait()
