@@ -86,7 +86,170 @@ class DownloadManager:
             return None
     
     def get_playlist_info(self, url: str) -> Optional[Dict]:
-        """Extract playlist/channel information using yt-dlp"""
+        """Extract playlist/channel information using yt-dlp with advanced categorization"""
+        try:
+            # First, determine if this is a channel or playlist
+            is_channel = '/channel/' in url or '/c/' in url or '/@' in url or '/user/' in url
+            
+            if is_channel:
+                return self._get_channel_info(url)
+            else:
+                return self._get_simple_playlist_info(url)
+                
+        except Exception as e:
+            logging.error(f"Error extracting playlist info: {str(e)}")
+            return None
+    
+    def _get_channel_info(self, url: str) -> Optional[Dict]:
+        """Get detailed channel information with categorized content"""
+        try:
+            # Get channel metadata
+            metadata_cmd = [
+                'yt-dlp',
+                '--dump-json',
+                '--no-download',
+                '--playlist-items', '1',
+                '--ignore-errors',
+                url
+            ]
+            
+            metadata_result = subprocess.run(metadata_cmd, capture_output=True, text=True, timeout=60)
+            channel_info = {}
+            
+            if metadata_result.returncode == 0 and metadata_result.stdout.strip():
+                try:
+                    metadata = json.loads(metadata_result.stdout)
+                    channel_info = {
+                        'channel_name': metadata.get('uploader', metadata.get('channel', 'Unknown Channel')),
+                        'channel_id': metadata.get('uploader_id', metadata.get('channel_id', '')),
+                        'channel_url': metadata.get('uploader_url', metadata.get('channel_url', url)),
+                        'subscriber_count': metadata.get('subscriber_count', 0),
+                        'channel_avatar': metadata.get('avatar', metadata.get('thumbnail', '')),
+                        'description': metadata.get('description', '')
+                    }
+                except json.JSONDecodeError:
+                    pass
+            
+            # Get all videos from channel
+            all_videos_cmd = [
+                'yt-dlp',
+                '--dump-json',
+                '--no-download',
+                '--flat-playlist',
+                '--ignore-errors',
+                '--playlist-end', '100',  # Limit to first 100 videos for performance
+                url + '/videos'
+            ]
+            
+            all_result = subprocess.run(all_videos_cmd, capture_output=True, text=True, timeout=120)
+            all_videos = []
+            
+            if all_result.returncode == 0 and all_result.stdout.strip():
+                for line in all_result.stdout.strip().split('\n'):
+                    if line.strip():
+                        try:
+                            entry = json.loads(line)
+                            if entry.get('_type') == 'url':
+                                video_data = {
+                                    'id': entry.get('id', ''),
+                                    'title': entry.get('title', 'Unknown'),
+                                    'url': entry.get('url', ''),
+                                    'webpage_url': entry.get('webpage_url', ''),
+                                    'duration': entry.get('duration', 0),
+                                    'view_count': entry.get('view_count', 0),
+                                    'upload_date': entry.get('upload_date', ''),
+                                    'thumbnail': entry.get('thumbnail', ''),
+                                    'description': entry.get('description', '')[:200] if entry.get('description') else ''
+                                }
+                                all_videos.append(video_data)
+                        except json.JSONDecodeError:
+                            continue
+            
+            # Get shorts (if available)
+            shorts_cmd = [
+                'yt-dlp',
+                '--dump-json',
+                '--no-download',
+                '--flat-playlist',
+                '--ignore-errors',
+                '--playlist-end', '50',
+                url + '/shorts'
+            ]
+            
+            shorts_result = subprocess.run(shorts_cmd, capture_output=True, text=True, timeout=60)
+            shorts = []
+            
+            if shorts_result.returncode == 0 and shorts_result.stdout.strip():
+                for line in shorts_result.stdout.strip().split('\n'):
+                    if line.strip():
+                        try:
+                            entry = json.loads(line)
+                            if entry.get('_type') == 'url':
+                                shorts.append({
+                                    'id': entry.get('id', ''),
+                                    'title': entry.get('title', 'Unknown'),
+                                    'url': entry.get('url', ''),
+                                    'webpage_url': entry.get('webpage_url', ''),
+                                    'duration': entry.get('duration', 0),
+                                    'view_count': entry.get('view_count', 0),
+                                    'upload_date': entry.get('upload_date', ''),
+                                    'thumbnail': entry.get('thumbnail', '')
+                                })
+                        except json.JSONDecodeError:
+                            continue
+            
+            # Get playlists
+            playlists_cmd = [
+                'yt-dlp',
+                '--dump-json',
+                '--no-download',
+                '--flat-playlist',
+                '--ignore-errors',
+                '--playlist-end', '30',
+                url + '/playlists'
+            ]
+            
+            playlists_result = subprocess.run(playlists_cmd, capture_output=True, text=True, timeout=60)
+            playlists = []
+            
+            if playlists_result.returncode == 0 and playlists_result.stdout.strip():
+                for line in playlists_result.stdout.strip().split('\n'):
+                    if line.strip():
+                        try:
+                            entry = json.loads(line)
+                            if entry.get('_type') == 'url':
+                                playlists.append({
+                                    'id': entry.get('id', ''),
+                                    'title': entry.get('title', 'Unknown'),
+                                    'url': entry.get('url', ''),
+                                    'webpage_url': entry.get('webpage_url', ''),
+                                    'playlist_count': entry.get('playlist_count', 0),
+                                    'thumbnail': entry.get('thumbnail', '')
+                                })
+                        except json.JSONDecodeError:
+                            continue
+            
+            return {
+                'type': 'channel',
+                'channel_info': channel_info,
+                'all_videos': all_videos,
+                'shorts': shorts,
+                'playlists': playlists,
+                'total_videos': len(all_videos),
+                'total_shorts': len(shorts),
+                'total_playlists': len(playlists),
+                'url': url
+            }
+            
+        except subprocess.TimeoutExpired:
+            logging.error("yt-dlp channel timeout")
+            return None
+        except Exception as e:
+            logging.error(f"Error extracting channel info: {str(e)}")
+            return None
+    
+    def _get_simple_playlist_info(self, url: str) -> Optional[Dict]:
+        """Get simple playlist information for non-channel URLs"""
         try:
             cmd = [
                 'yt-dlp',
@@ -107,7 +270,6 @@ class DownloadManager:
                 logging.error("No playlist output from yt-dlp")
                 return None
             
-            # Parse each line as JSON (flat playlist returns one JSON per line)
             entries = []
             for line in result.stdout.strip().split('\n'):
                 if line.strip():
@@ -120,7 +282,10 @@ class DownloadManager:
                                 'url': entry.get('url', ''),
                                 'duration': entry.get('duration', 0),
                                 'uploader': entry.get('uploader', ''),
-                                'webpage_url': entry.get('webpage_url', '')
+                                'webpage_url': entry.get('webpage_url', ''),
+                                'view_count': entry.get('view_count', 0),
+                                'upload_date': entry.get('upload_date', ''),
+                                'thumbnail': entry.get('thumbnail', '')
                             })
                     except json.JSONDecodeError:
                         continue
@@ -128,11 +293,10 @@ class DownloadManager:
             if not entries:
                 return None
             
-            # Get playlist metadata from first entry or try to extract from URL
+            # Get playlist metadata
             playlist_title = "Playlist"
             playlist_uploader = "Unknown"
             
-            # Try to get playlist info with a separate command
             try:
                 info_cmd = [
                     'yt-dlp',
@@ -150,12 +314,12 @@ class DownloadManager:
                 pass
             
             return {
+                'type': 'playlist',
                 'title': playlist_title,
                 'uploader': playlist_uploader,
                 'entry_count': len(entries),
-                'entries': entries[:50],  # Limit to first 50 entries for performance
-                'url': url,
-                'type': 'playlist'
+                'entries': entries,
+                'url': url
             }
             
         except subprocess.TimeoutExpired:

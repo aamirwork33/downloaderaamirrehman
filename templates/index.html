@@ -273,6 +273,128 @@
         </div>
     </div>
 
+    <!-- Channel Analyzer Modal -->
+    <div class="modal fade" id="channelAnalyzerModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+        <div class="modal-dialog modal-fullscreen-lg-down modal-xl">
+            <div class="modal-content channel-analyzer-modal">
+                <div class="modal-header border-0 pb-0">
+                    <div class="d-flex align-items-center w-100">
+                        <div class="channel-header-info d-flex align-items-center flex-grow-1">
+                            <img id="channelAvatar" class="channel-avatar me-3" src="" alt="Channel Avatar">
+                            <div>
+                                <h4 id="channelName" class="mb-1">Channel Name</h4>
+                                <div class="d-flex align-items-center text-muted">
+                                    <i class="fas fa-users me-2"></i>
+                                    <span id="subscriberCount">0 subscribers</span>
+                                    <span class="mx-2">•</span>
+                                    <span id="totalVideoCount">0 videos</span>
+                                </div>
+                            </div>
+                        </div>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                </div>
+                
+                <div class="modal-body px-4">
+                    <!-- Channel Tabs -->
+                    <ul class="nav nav-pills channel-tabs mb-4" id="channelTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="all-videos-tab" data-bs-toggle="pill" data-bs-target="#all-videos" type="button" role="tab">
+                                <i class="fas fa-video me-2"></i>All Videos <span id="allVideosCount" class="badge">0</span>
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="shorts-tab" data-bs-toggle="pill" data-bs-target="#shorts" type="button" role="tab">
+                                <i class="fas fa-mobile-alt me-2"></i>Shorts <span id="shortsCount" class="badge">0</span>
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="playlists-tab" data-bs-toggle="pill" data-bs-target="#playlists" type="button" role="tab">
+                                <i class="fas fa-list-ul me-2"></i>Playlists <span id="playlistsCount" class="badge">0</span>
+                            </button>
+                        </li>
+                    </ul>
+
+                    <!-- Controls Row -->
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-outline-primary btn-sm" id="selectAllBtn">
+                                    <i class="fas fa-check-square me-1"></i>Select All
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm" id="unselectAllBtn">
+                                    <i class="fas fa-square me-1"></i>Unselect All
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="d-flex gap-2">
+                                <select class="form-select form-select-sm" id="sortSelect">
+                                    <option value="newest">Newest First</option>
+                                    <option value="oldest">Oldest First</option>
+                                    <option value="most_viewed">Most Viewed</option>
+                                    <option value="title">Title A-Z</option>
+                                </select>
+                                <input type="text" class="form-control form-control-sm" id="searchInput" placeholder="Search videos...">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tab Content -->
+                    <div class="tab-content" id="channelTabsContent">
+                        <!-- All Videos Tab -->
+                        <div class="tab-pane fade show active" id="all-videos" role="tabpanel">
+                            <div class="video-grid" id="allVideosGrid">
+                                <!-- Videos will be loaded here -->
+                            </div>
+                        </div>
+                        
+                        <!-- Shorts Tab -->
+                        <div class="tab-pane fade" id="shorts" role="tabpanel">
+                            <div class="video-grid" id="shortsGrid">
+                                <!-- Shorts will be loaded here -->
+                            </div>
+                        </div>
+                        
+                        <!-- Playlists Tab -->
+                        <div class="tab-pane fade" id="playlists" role="tabpanel">
+                            <div class="video-grid" id="playlistsGrid">
+                                <!-- Playlists will be loaded here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="modal-footer border-0 pt-0">
+                    <div class="d-flex justify-content-between align-items-center w-100">
+                        <div class="selection-summary">
+                            <span id="selectionCount">0 videos selected</span>
+                            <span class="text-muted ms-2">•</span>
+                            <span id="estimatedSize" class="text-muted ms-2">0 MB estimated</span>
+                        </div>
+                        <div class="d-flex gap-3">
+                            <div class="download-options d-flex gap-2">
+                                <select class="form-select form-select-sm" id="modalFormatSelect">
+                                    <option value="mp4">MP4</option>
+                                    <option value="mp3">MP3</option>
+                                </select>
+                                <select class="form-select form-select-sm" id="modalQualitySelect">
+                                    <option value="1080p">1080p</option>
+                                    <option value="720p" selected>720p</option>
+                                    <option value="480p">480p</option>
+                                    <option value="360p">360p</option>
+                                </select>
+                            </div>
+                            <button class="btn btn-success btn-lg" id="downloadSelectedBtn" disabled>
+                                <i class="fas fa-download me-2"></i>Download Selected
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <!-- Custom JS -->

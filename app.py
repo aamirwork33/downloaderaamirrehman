@@ -98,6 +98,39 @@ def start_download():
         logging.error(f"Error starting download: {str(e)}")
         return jsonify({'error': f'Download failed: {str(e)}'}), 500
 
+@app.route('/api/download-selected', methods=['POST'])
+def download_selected_videos():
+    """Download multiple selected videos"""
+    try:
+        data = request.get_json()
+        video_urls = data.get('video_urls', [])
+        format_type = data.get('format', 'mp4')
+        quality = data.get('quality', '720p')
+        
+        if not video_urls or not isinstance(video_urls, list):
+            return jsonify({'error': 'video_urls array is required'}), 400
+        
+        download_ids = []
+        
+        for url in video_urls:
+            if url.strip():
+                download_id = download_manager.start_download(url.strip(), format_type, quality)
+                if download_id:
+                    download_ids.append(download_id)
+        
+        if not download_ids:
+            return jsonify({'error': 'Failed to start any downloads'}), 500
+        
+        return jsonify({
+            'success': True,
+            'download_ids': download_ids,
+            'message': f'Started {len(download_ids)} downloads successfully'
+        })
+        
+    except Exception as e:
+        logging.error(f"Error starting selected downloads: {str(e)}")
+        return jsonify({'error': f'Download failed: {str(e)}'}), 500
+
 @app.route('/api/progress/<download_id>')
 def get_progress(download_id):
     """Get download progress for a specific download"""
