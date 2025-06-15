@@ -511,17 +511,19 @@ body {
 }
 
 .video-duration {
-    background: rgba(0, 0, 0, 0.8);
+    background: rgba(0, 0, 0, 0.9);
     color: white;
-    padding: 2px 6px;
-    border-radius: 4px;
+    padding: 3px 6px;
+    border-radius: 6px;
     font-size: 0.75rem;
-    font-weight: 500;
+    font-weight: 600;
     position: absolute;
-    bottom: 8px;
-    right: 8px;
+    bottom: 6px;
+    right: 6px;
     min-width: 35px;
     text-align: center;
+    backdrop-filter: blur(4px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 /* Selection Summary */
@@ -599,6 +601,7 @@ body {
 /* Loading States */
 .video-grid.loading {
     display: flex;
+    flex-direction: column;
     justify-content: center;
     align-items: center;
     min-height: 200px;
@@ -614,9 +617,45 @@ body {
     animation: spin 1s ease-in-out infinite;
 }
 
+/* Skeleton Loading */
+.skeleton-text {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: skeleton-loading 1.5s infinite;
+    border-radius: 4px;
+    height: 1em;
+    display: inline-block;
+}
+
+.skeleton-text-lg {
+    height: 1.5em;
+    width: 200px;
+}
+
+.skeleton-text-sm {
+    height: 0.8em;
+    width: 120px;
+}
+
+@keyframes skeleton-loading {
+    0% {
+        background-position: 200% 0;
+    }
+    100% {
+        background-position: -200% 0;
+    }
+}
+
 /* Smooth Animations */
 .video-item {
-    animation: slideInUp 0.3s ease-out;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.3s ease-out;
+}
+
+.video-item.slide-in {
+    opacity: 1;
+    transform: translateY(0);
 }
 
 @keyframes slideInUp {
@@ -628,6 +667,19 @@ body {
         opacity: 1;
         transform: translateY(0);
     }
+}
+
+/* Tab transition animations */
+.tab-pane {
+    transition: opacity 0.3s ease-in-out;
+}
+
+.tab-pane.fade:not(.show) {
+    opacity: 0;
+}
+
+.tab-pane.fade.show {
+    opacity: 1;
 }
 
 .channel-analyzer-modal {
