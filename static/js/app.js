@@ -3,6 +3,7 @@ class StreamVault {
         this.downloads = new Map();
         this.progressInterval = null;
         this.currentVideoInfo = null;
+        this.currentPlaylistInfo = null;
         
         this.initializeEventListeners();
         this.startProgressPolling();
@@ -42,6 +43,10 @@ class StreamVault {
             this.validateUrl(e.target.value, 'single');
         });
         
+        document.getElementById('playlistUrl').addEventListener('input', (e) => {
+            this.validateUrl(e.target.value, 'playlist');
+        });
+        
         // Format change handling
         document.getElementById('formatSelect').addEventListener('change', (e) => {
             this.handleFormatChange(e.target.value, 'single');
@@ -63,6 +68,9 @@ class StreamVault {
         
         if (context === 'single') {
             const analyzeBtn = document.getElementById('analyzeBtn');
+            analyzeBtn.disabled = !isValid;
+        } else if (context === 'playlist') {
+            const analyzeBtn = document.getElementById('analyzePlaylistBtn');
             analyzeBtn.disabled = !isValid;
         }
     }
@@ -193,13 +201,129 @@ class StreamVault {
     }
     
     async analyzePlaylist() {
-        // Placeholder for playlist analysis
-        this.showToast('Playlist analysis will be implemented in the full version', 'warning');
+        const url = document.getElementById('playlistUrl').value.trim();
+        if (!url) {
+            this.showToast('Please enter a valid playlist or channel URL', 'error');
+            return;
+        }
+        
+        this.showLoadingModal('Analyzing playlist...');
+        
+        try {
+            const response = await fetch('/api/analyze-playlist', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ url })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                this.currentPlaylistInfo = data.playlist;
+                this.displayPlaylistInfo(data.playlist);
+                document.getElementById('playlistDownloadBtn').disabled = false;
+                this.showToast(`Found ${data.playlist.entry_count} videos in playlist!`, 'success');
+            } else {
+                throw new Error(data.error || 'Playlist analysis failed');
+            }
+        } catch (error) {
+            console.error('Playlist analysis error:', error);
+            this.showToast(`Playlist analysis failed: ${error.message}`, 'error');
+        } finally {
+            this.hideLoadingModal();
+        }
     }
     
+    displayPlaylistInfo(playlist) {
+        // Create playlist info display after the playlist card
+        const playlistTab = document.getElementById('playlist');
+        let playlistInfoCard = document.getElementById('playlistInfoCard');
+        
+        if (!playlistInfoCard) {
+            playlistInfoCard = document.createElement('div');
+            playlistInfoCard.id = 'playlistInfoCard';
+            playlistInfoCard.className = 'card mt-4';
+            playlistTab.appendChild(playlistInfoCard);
+        }
+        
+        playlistInfoCard.innerHTML = `
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="fas fa-list-ul me-2"></i>Playlist Information
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-8">
+                        <h5>${playlist.title}</h5>
+                        <p class="text-muted mb-1">
+                            <i class="fas fa-user me-2"></i>${playlist.uploader}
+                        </p>
+                        <p class="text-muted mb-3">
+                            <i class="fas fa-video me-2"></i>${playlist.entry_count} videos
+                        </p>
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            Ready to download ${Math.min(playlist.entry_count, 50)} videos from this playlist
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="d-grid">
+                            <button class="btn btn-success btn-lg" onclick="streamVault.startPlaylistDownload()">
+                                <i class="fas fa-download me-2"></i>Download All
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        playlistInfoCard.classList.add('fade-in');
+    }
+
     async startPlaylistDownload() {
-        // Placeholder for playlist download
-        this.showToast('Playlist download will be implemented in the full version', 'warning');
+        if (!this.currentPlaylistInfo) {
+            this.showToast('Please analyze the playlist first', 'error');
+            return;
+        }
+        
+        const format = document.getElementById('playlistFormatSelect').value;
+        const quality = document.getElementById('playlistQualitySelect').value;
+        
+        this.showLoadingModal('Starting playlist downloads...');
+        
+        try {
+            let downloadCount = 0;
+            const maxDownloads = Math.min(this.currentPlaylistInfo.entries.length, 20); // Limit to 20 concurrent downloads
+            
+            for (let i = 0; i < maxDownloads; i++) {
+                const entry = this.currentPlaylistInfo.entries[i];
+                if (entry && entry.url) {
+                    await this.startDownload(
+                        entry.url, 
+                        format, 
+                        quality, 
+                        `${entry.title} (Playlist: ${this.currentPlaylistInfo.title})`
+                    );
+                    downloadCount++;
+                    
+                    // Small delay between downloads to prevent overwhelming the server
+                    if (i < maxDownloads - 1) {
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                    }
+                }
+            }
+            
+            this.showToast(`Started ${downloadCount} downloads from playlist`, 'success');
+            
+        } catch (error) {
+            console.error('Playlist download error:', error);
+            this.showToast(`Failed to start playlist downloads: ${error.message}`, 'error');
+        } finally {
+            this.hideLoadingModal();
+        }
     }
     
     async startDownload(url, format, quality, title) {

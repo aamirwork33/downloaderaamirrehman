@@ -34,7 +34,7 @@ def analyze_video():
         video_info = download_manager.get_video_info(url)
         
         if not video_info:
-            return jsonify({'error': 'Unable to extract video information'}), 400
+            return jsonify({'error': 'Unable to extract video information. Please check if the URL is valid and accessible.'}), 400
         
         return jsonify({
             'success': True,
@@ -44,6 +44,31 @@ def analyze_video():
     except Exception as e:
         logging.error(f"Error analyzing video: {str(e)}")
         return jsonify({'error': f'Analysis failed: {str(e)}'}), 500
+
+@app.route('/api/analyze-playlist', methods=['POST'])
+def analyze_playlist():
+    """Analyze playlist/channel URL and return metadata"""
+    try:
+        data = request.get_json()
+        url = data.get('url', '').strip()
+        
+        if not url:
+            return jsonify({'error': 'URL is required'}), 400
+        
+        # Get playlist information
+        playlist_info = download_manager.get_playlist_info(url)
+        
+        if not playlist_info:
+            return jsonify({'error': 'Unable to extract playlist information. Please check if the URL is valid and accessible.'}), 400
+        
+        return jsonify({
+            'success': True,
+            'playlist': playlist_info
+        })
+        
+    except Exception as e:
+        logging.error(f"Error analyzing playlist: {str(e)}")
+        return jsonify({'error': f'Playlist analysis failed: {str(e)}'}), 500
 
 @app.route('/api/download', methods=['POST'])
 def start_download():

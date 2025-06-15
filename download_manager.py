@@ -25,13 +25,19 @@ class DownloadManager:
                 'yt-dlp',
                 '--dump-json',
                 '--no-download',
+                '--no-playlist',
+                '--ignore-errors',
                 url
             ]
             
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
             
             if result.returncode != 0:
                 logging.error(f"yt-dlp error: {result.stderr}")
+                return None
+            
+            if not result.stdout.strip():
+                logging.error("No output from yt-dlp")
                 return None
             
             video_data = json.loads(result.stdout)
@@ -45,7 +51,10 @@ class DownloadManager:
                             'format_id': fmt['format_id'],
                             'quality': f"{fmt['height']}p",
                             'ext': fmt.get('ext', 'mp4'),
-                            'filesize': fmt.get('filesize')
+                            'filesize': fmt.get('filesize'),
+                            'fps': fmt.get('fps'),
+                            'vcodec': fmt.get('vcodec', ''),
+                            'acodec': fmt.get('acodec', '')
                         })
             
             # Sort formats by quality (descending)
@@ -56,15 +65,104 @@ class DownloadManager:
                 'uploader': video_data.get('uploader', 'Unknown'),
                 'duration': video_data.get('duration', 0),
                 'thumbnail': video_data.get('thumbnail', ''),
-                'formats': formats[:10],  # Limit to top 10 formats
-                'url': url
+                'description': video_data.get('description', ''),
+                'view_count': video_data.get('view_count', 0),
+                'upload_date': video_data.get('upload_date', ''),
+                'formats': formats[:15],  # Show more format options
+                'url': url,
+                'webpage_url': video_data.get('webpage_url', url),
+                'extractor': video_data.get('extractor', ''),
+                'id': video_data.get('id', '')
             }
             
         except subprocess.TimeoutExpired:
-            logging.error("yt-dlp timeout")
+            logging.error("yt-dlp timeout - URL may be inaccessible")
+            return None
+        except json.JSONDecodeError as e:
+            logging.error(f"Failed to parse yt-dlp JSON output: {str(e)}")
             return None
         except Exception as e:
             logging.error(f"Error extracting video info: {str(e)}")
+            return None
+    
+    def get_playlist_info(self, url: str) -> Optional[Dict]:
+        """Extract playlist/channel information using yt-dlp"""
+        try:
+            cmd = [
+                'yt-dlp',
+                '--dump-json',
+                '--no-download',
+                '--flat-playlist',
+                '--ignore-errors',
+                url
+            ]
+            
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+            
+            if result.returncode != 0:
+                logging.error(f"yt-dlp playlist error: {result.stderr}")
+                return None
+            
+            if not result.stdout.strip():
+                logging.error("No playlist output from yt-dlp")
+                return None
+            
+            # Parse each line as JSON (flat playlist returns one JSON per line)
+            entries = []
+            for line in result.stdout.strip().split('\n'):
+                if line.strip():
+                    try:
+                        entry = json.loads(line)
+                        if entry.get('_type') == 'url':
+                            entries.append({
+                                'id': entry.get('id', ''),
+                                'title': entry.get('title', 'Unknown'),
+                                'url': entry.get('url', ''),
+                                'duration': entry.get('duration', 0),
+                                'uploader': entry.get('uploader', ''),
+                                'webpage_url': entry.get('webpage_url', '')
+                            })
+                    except json.JSONDecodeError:
+                        continue
+            
+            if not entries:
+                return None
+            
+            # Get playlist metadata from first entry or try to extract from URL
+            playlist_title = "Playlist"
+            playlist_uploader = "Unknown"
+            
+            # Try to get playlist info with a separate command
+            try:
+                info_cmd = [
+                    'yt-dlp',
+                    '--dump-json',
+                    '--no-download',
+                    '--playlist-items', '1',
+                    url
+                ]
+                info_result = subprocess.run(info_cmd, capture_output=True, text=True, timeout=30)
+                if info_result.returncode == 0 and info_result.stdout.strip():
+                    info_data = json.loads(info_result.stdout)
+                    playlist_title = info_data.get('playlist_title') or info_data.get('title', 'Playlist')
+                    playlist_uploader = info_data.get('uploader') or info_data.get('playlist_uploader', 'Unknown')
+            except:
+                pass
+            
+            return {
+                'title': playlist_title,
+                'uploader': playlist_uploader,
+                'entry_count': len(entries),
+                'entries': entries[:50],  # Limit to first 50 entries for performance
+                'url': url,
+                'type': 'playlist'
+            }
+            
+        except subprocess.TimeoutExpired:
+            logging.error("yt-dlp playlist timeout")
+            return None
+        except Exception as e:
+            logging.error(f"Error extracting playlist info: {str(e)}")
             return None
     
     def start_download(self, url: str, format_type: str, quality: str) -> Optional[str]:
