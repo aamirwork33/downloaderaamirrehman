@@ -1,0 +1,48 @@
+StreamVault is an advanced, web-based video downloader application designed with a modern user interface and a powerful backend. Its primary purpose is to provide a comprehensive, all-in-one solution for downloading videos, entire playlists, and full channel contents from a wide variety of online platforms, including YouTube, TikTok, Facebook, and over a thousand others.
+
+The project emphasizes user experience with a responsive, visually appealing design and provides users with a high degree of control over their downloads through extensive customization and real-time feedback.
+
+Key Implemented Features
+Your application is rich with features that can be categorized into several groups:
+
+1. Core Downloading Capabilities
+Multi-Platform Support: Natively supports major platforms and can download from over 1000 other sites via the yt-dlp library.
+Multiple Download Modes:
+Single Video: For downloading individual videos.
+Bulk Download: For processing a list of URLs simultaneously.
+Playlist/Channel Download: For fetching entire playlists or channel contents.
+Format & Quality Selection: Users can choose their desired video format (MP4, MKV, WebM) and audio format (MP3), as well as select from a range of video qualities, from 360p up to 4K.
+Download Management: The application includes a download queue for sequential processing, real-time progress bars with speed and ETA, and the ability to pause, resume, and cancel downloads.
+2. UI and UX Features
+Modern Design: Features a professional purple-to-blue gradient theme, a responsive card-based layout, and modern typography using the "Inter" font.
+Tab-Based Interface: The UI is cleanly organized into tabs for "Single Video", "Bulk Download", and "Playlist/Channel", each with a distinct interface.
+Dynamic Feedback: Provides users with real-time status updates through visual badges (e.g., "Downloading", "Completed", "Failed"), loading spinners, and toast notifications for success or error messages.
+Quick Settings Panel: A convenient sidebar panel with iOS-style toggles allows users to instantly configure key settings like auto-start, parallel downloads, and subtitle extraction.
+3. Advanced Functionality
+Channel Analyzer: This is the latest advanced feature. When a user provides a channel URL, a detailed modal window appears, providing a full overview of the channel's content. It separates content into "All", "Videos", "Shorts", and "Playlists" tabs, shows accurate content counts, and allows users to select specific items for download with advanced sorting capabilities.
+Auto-Download System: Users can enable an "auto-start" toggle. When enabled, downloads begin automatically as soon as the video information is analyzed, using the user's saved preferences for quality and format.
+Customization Options: Users have granular control over their downloads, including setting a custom save location, defining flexible filename patterns, and configuring a proxy for network requests.
+How It Works: Technical Architecture
+The application is built on a modern client-server architecture.
+
+Backend (Python & Flask)
+
+The server is built using Flask, a lightweight Python web framework.
+The core of the backend is its deep integration with the yt-dlp library, which handles all the heavy lifting of extracting information and downloading video content from various websites.
+It exposes a RESTful API that the frontend communicates with. Key endpoints include /api/analyze-channel (to get channel data), /api/download (to start a download), and /api/progress (to provide real-time updates).
+To handle multiple downloads simultaneously without freezing, the backend uses a ThreadPoolExecutor to run each download process in a separate thread.
+Frontend (HTML, CSS, Vanilla JavaScript)
+
+The user interface is a single-page application built with standard HTML5, CSS3, and modern "vanilla" JavaScript (ES6+), meaning it has no external framework dependencies like React or Vue.
+It is fully responsive, using modern CSS techniques like Flexbox and Grid to adapt to both desktop and mobile screens.
+All interactions are handled by JavaScript, which makes asynchronous API calls to the backend. For example, when you click "Analyze," it sends the URL to the backend and waits for a JSON response.
+To show live download progress, the frontend polls the /api/progress endpoint every few seconds using setInterval and dynamically updates the HTML to reflect the new status, percentage, and speed.
+Data Flow
+
+User Input: The user pastes a URL into an input field on the frontend.
+API Request: JavaScript sends the URL to the appropriate backend API endpoint (e.g., /api/analyze-channel).
+Backend Processing: The Flask server receives the request, and its Python code calls the yt-dlp library with the given URL and specified options.
+Data Extraction: yt-dlp connects to the platform (e.g., YouTube), extracts all the required metadata (titles, thumbnails, formats, etc.), and returns it to the Flask application.
+API Response: The backend formats this data into a structured JSON object and sends it back to the frontend.
+UI Update: The frontend's JavaScript receives the JSON, dynamically builds the HTML for the video cards or analyzer modal, and displays the information to the user.
+Download Initiation: When the user clicks "Download," a request is sent to the /api/download endpoint. The backend starts the download in a background thread and immediately returns a success message, allowing the UI to remain responsive.
