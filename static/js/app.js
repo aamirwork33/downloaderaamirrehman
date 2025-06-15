@@ -4,6 +4,10 @@ class StreamVault {
         this.progressInterval = null;
         this.currentVideoInfo = null;
         this.currentPlaylistInfo = null;
+        this.channelData = null;
+        this.selectedVideos = new Set();
+        this.currentTab = 'all-videos';
+        this.filteredVideos = [];
         
         this.initializeEventListeners();
         this.startProgressPolling();
@@ -58,6 +62,47 @@ class StreamVault {
         
         document.getElementById('playlistFormatSelect').addEventListener('change', (e) => {
             this.handleFormatChange(e.target.value, 'playlist');
+        });
+        
+        // Channel Analyzer Modal Event Listeners
+        this.initializeChannelAnalyzerEvents();
+    }
+    
+    initializeChannelAnalyzerEvents() {
+        // Tab switching
+        document.querySelectorAll('#channelTabs .nav-link').forEach(tab => {
+            tab.addEventListener('click', (e) => {
+                this.currentTab = e.target.id.replace('-tab', '');
+                this.updateVideoDisplay();
+            });
+        });
+        
+        // Selection controls
+        document.getElementById('selectAllBtn').addEventListener('click', () => {
+            this.selectAllVideos();
+        });
+        
+        document.getElementById('unselectAllBtn').addEventListener('click', () => {
+            this.unselectAllVideos();
+        });
+        
+        // Search and sort
+        document.getElementById('searchInput').addEventListener('input', (e) => {
+            this.filterVideos(e.target.value);
+        });
+        
+        document.getElementById('sortSelect').addEventListener('change', (e) => {
+            this.sortVideos(e.target.value);
+        });
+        
+        // Download selected videos
+        document.getElementById('downloadSelectedBtn').addEventListener('click', () => {
+            this.downloadSelectedVideos();
+        });
+        
+        // Format change for modal
+        document.getElementById('modalFormatSelect').addEventListener('change', (e) => {
+            this.updateEstimatedSize();
         });
     }
     
@@ -207,7 +252,7 @@ class StreamVault {
             return;
         }
         
-        this.showLoadingModal('Analyzing playlist...');
+        this.showLoadingModal('Analyzing content...');
         
         try {
             const response = await fetch('/api/analyze-playlist', {
@@ -222,17 +267,372 @@ class StreamVault {
             
             if (data.success) {
                 this.currentPlaylistInfo = data.playlist;
-                this.displayPlaylistInfo(data.playlist);
-                document.getElementById('playlistDownloadBtn').disabled = false;
-                this.showToast(`Found ${data.playlist.entry_count} videos in playlist!`, 'success');
+                
+                // Check if this is a channel or simple playlist
+                if (data.playlist.type === 'channel') {
+                    this.channelData = data.playlist;
+                    this.showChannelAnalyzerModal();
+                } else {
+                    this.displayPlaylistInfo(data.playlist);
+                    document.getElementById('playlistDownloadBtn').disabled = false;
+                    this.showToast(`Found ${data.playlist.entry_count} videos in playlist!`, 'success');
+                }
             } else {
-                throw new Error(data.error || 'Playlist analysis failed');
+                throw new Error(data.error || 'Analysis failed');
             }
         } catch (error) {
-            console.error('Playlist analysis error:', error);
-            this.showToast(`Playlist analysis failed: ${error.message}`, 'error');
+            console.error('Analysis error:', error);
+            this.showToast(`Analysis failed: ${error.message}`, 'error');
         } finally {
             this.hideLoadingModal();
+        }
+    }
+    
+    showChannelAnalyzerModal() {
+        if (!this.channelData) return;
+        
+        const modal = new bootstrap.Modal(document.getElementById('channelAnalyzerModal'));
+        
+        // Populate channel header
+        this.populateChannelHeader();
+        
+        // Reset selections
+        this.selectedVideos.clear();
+        this.currentTab = 'all-videos';
+        
+        // Update counts
+        this.updateTabCounts();
+        
+        // Load initial videos
+        this.updateVideoDisplay();
+        
+        // Show modal
+        modal.show();
+        
+        this.showToast('Channel analyzed successfully!', 'success');
+    }
+    
+    populateChannelHeader() {
+        const { channel_info } = this.channelData;
+        
+        document.getElementById('channelName').textContent = channel_info.channel_name || 'Unknown Channel';
+        document.getElementById('channelAvatar').src = channel_info.channel_avatar || 'https://via.placeholder.com/64x64?text=CH';
+        document.getElementById('subscriberCount').textContent = this.formatCount(channel_info.subscriber_count) + ' subscribers';
+        document.getElementById('totalVideoCount').textContent = this.channelData.total_videos + ' videos';
+    }
+    
+    updateTabCounts() {
+        document.getElementById('allVideosCount').textContent = this.channelData.total_videos;
+        document.getElementById('shortsCount').textContent = this.channelData.total_shorts;
+        document.getElementById('playlistsCount').textContent = this.channelData.total_playlists;
+    }
+    
+    updateVideoDisplay() {
+        let videos = [];
+        let gridId = '';
+        
+        switch(this.currentTab) {
+            case 'all-videos':
+                videos = this.channelData.all_videos;
+                gridId = 'allVideosGrid';
+                break;
+            case 'shorts':
+                videos = this.channelData.shorts;
+                gridId = 'shortsGrid';
+                break;
+            case 'playlists':
+                videos = this.channelData.playlists;
+                gridId = 'playlistsGrid';
+                break;
+        }
+        
+        this.filteredVideos = videos;
+        this.applyCurrentFilters();
+        this.renderVideoGrid(gridId);
+        this.updateSelectionSummary();
+    }
+    
+    applyCurrentFilters() {
+        const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+        const sortBy = document.getElementById('sortSelect').value;
+        
+        // Apply search filter
+        if (searchTerm) {
+            this.filteredVideos = this.filteredVideos.filter(video => 
+                video.title.toLowerCase().includes(searchTerm)
+            );
+        }
+        
+        // Apply sorting
+        this.filteredVideos.sort((a, b) => {
+            switch(sortBy) {
+                case 'newest':
+                    return new Date(b.upload_date || 0) - new Date(a.upload_date || 0);
+                case 'oldest':
+                    return new Date(a.upload_date || 0) - new Date(b.upload_date || 0);
+                case 'most_viewed':
+                    return (b.view_count || 0) - (a.view_count || 0);
+                case 'title':
+                    return a.title.localeCompare(b.title);
+                default:
+                    return 0;
+            }
+        });
+    }
+    
+    renderVideoGrid(gridId) {
+        const grid = document.getElementById(gridId);
+        
+        if (this.filteredVideos.length === 0) {
+            grid.innerHTML = `
+                <div class="text-center text-muted py-4">
+                    <i class="fas fa-inbox fa-2x mb-2"></i>
+                    <p>No videos found</p>
+                </div>
+            `;
+            return;
+        }
+        
+        const videosHtml = this.filteredVideos.map(video => {
+            const isSelected = this.selectedVideos.has(video.id);
+            const thumbnail = video.thumbnail || 'https://via.placeholder.com/120x68?text=No+Image';
+            
+            return `
+                <div class="video-item ${isSelected ? 'selected' : ''}" data-video-id="${video.id}">
+                    <input type="checkbox" class="form-check-input video-checkbox" 
+                           ${isSelected ? 'checked' : ''} 
+                           onchange="streamVault.toggleVideoSelection('${video.id}')">
+                    <div class="position-relative">
+                        <img src="${thumbnail}" alt="${video.title}" class="video-thumbnail" loading="lazy">
+                        ${video.duration ? `<span class="video-duration">${this.formatDuration(video.duration)}</span>` : ''}
+                    </div>
+                    <div class="video-info">
+                        <div class="video-title">${video.title}</div>
+                        <div class="video-meta">
+                            ${video.view_count ? `<span>${this.formatCount(video.view_count)} views</span>` : ''}
+                            ${video.upload_date ? `<span>${this.formatDate(video.upload_date)}</span>` : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+        
+        grid.innerHTML = videosHtml;
+    }
+    
+    toggleVideoSelection(videoId) {
+        if (this.selectedVideos.has(videoId)) {
+            this.selectedVideos.delete(videoId);
+        } else {
+            this.selectedVideos.add(videoId);
+        }
+        
+        // Update visual state
+        const videoItem = document.querySelector(`[data-video-id="${videoId}"]`);
+        if (videoItem) {
+            videoItem.classList.toggle('selected', this.selectedVideos.has(videoId));
+        }
+        
+        this.updateSelectionSummary();
+        this.saveSelectionToStorage();
+    }
+    
+    selectAllVideos() {
+        this.filteredVideos.forEach(video => {
+            this.selectedVideos.add(video.id);
+        });
+        this.updateVideoDisplay();
+        this.saveSelectionToStorage();
+    }
+    
+    unselectAllVideos() {
+        this.selectedVideos.clear();
+        this.updateVideoDisplay();
+        this.saveSelectionToStorage();
+    }
+    
+    filterVideos(searchTerm) {
+        this.updateVideoDisplay();
+    }
+    
+    sortVideos(sortBy) {
+        this.updateVideoDisplay();
+    }
+    
+    updateSelectionSummary() {
+        const selectedCount = this.selectedVideos.size;
+        const estimatedSize = this.calculateEstimatedSize();
+        
+        document.getElementById('selectionCount').textContent = `${selectedCount} videos selected`;
+        document.getElementById('estimatedSize').textContent = `${estimatedSize} estimated`;
+        document.getElementById('downloadSelectedBtn').disabled = selectedCount === 0;
+    }
+    
+    calculateEstimatedSize() {
+        if (this.selectedVideos.size === 0) return '0 MB';
+        
+        const format = document.getElementById('modalFormatSelect').value;
+        const quality = document.getElementById('modalQualitySelect').value;
+        
+        // Rough estimation based on format and quality
+        let avgSizePerVideo = 50; // MB default
+        
+        if (format === 'mp4') {
+            switch(quality) {
+                case '1080p': avgSizePerVideo = 150; break;
+                case '720p': avgSizePerVideo = 80; break;
+                case '480p': avgSizePerVideo = 50; break;
+                case '360p': avgSizePerVideo = 30; break;
+            }
+        } else if (format === 'mp3') {
+            avgSizePerVideo = 5; // Much smaller for audio
+        }
+        
+        const totalSize = this.selectedVideos.size * avgSizePerVideo;
+        
+        if (totalSize >= 1024) {
+            return `${(totalSize / 1024).toFixed(1)} GB`;
+        } else {
+            return `${totalSize} MB`;
+        }
+    }
+    
+    async downloadSelectedVideos() {
+        if (this.selectedVideos.size === 0) {
+            this.showToast('Please select at least one video', 'error');
+            return;
+        }
+        
+        const format = document.getElementById('modalFormatSelect').value;
+        const quality = document.getElementById('modalQualitySelect').value;
+        
+        // Get URLs of selected videos
+        const selectedUrls = [];
+        const allVideos = [...this.channelData.all_videos, ...this.channelData.shorts];
+        
+        for (const videoId of this.selectedVideos) {
+            const video = allVideos.find(v => v.id === videoId);
+            if (video && video.url) {
+                selectedUrls.push(video.url);
+            }
+        }
+        
+        if (selectedUrls.length === 0) {
+            this.showToast('No valid URLs found for selected videos', 'error');
+            return;
+        }
+        
+        this.showLoadingModal('Starting downloads...');
+        
+        try {
+            const response = await fetch('/api/download-selected', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    video_urls: selectedUrls,
+                    format: format,
+                    quality: quality
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                // Add downloads to queue
+                data.download_ids.forEach((downloadId, index) => {
+                    const video = allVideos.find(v => this.selectedVideos.has(v.id));
+                    if (video) {
+                        this.addDownloadToQueue(downloadId, {
+                            id: downloadId,
+                            title: `${video.title} (Channel: ${this.channelData.channel_info.channel_name})`,
+                            url: selectedUrls[index],
+                            format: format,
+                            quality: quality,
+                            status: 'starting',
+                            progress: 0,
+                            speed: '',
+                            eta: ''
+                        });
+                    }
+                });
+                
+                this.showToast(`Started ${data.download_ids.length} downloads!`, 'success');
+                
+                // Close modal
+                const modal = bootstrap.Modal.getInstance(document.getElementById('channelAnalyzerModal'));
+                if (modal) modal.hide();
+                
+                // Clear selections
+                this.selectedVideos.clear();
+                localStorage.removeItem('streamvault_selections');
+                
+            } else {
+                throw new Error(data.error || 'Failed to start downloads');
+            }
+        } catch (error) {
+            console.error('Download error:', error);
+            this.showToast(`Download failed: ${error.message}`, 'error');
+        } finally {
+            this.hideLoadingModal();
+        }
+    }
+    
+    saveSelectionToStorage() {
+        const selections = Array.from(this.selectedVideos);
+        localStorage.setItem('streamvault_selections', JSON.stringify(selections));
+    }
+    
+    loadSelectionFromStorage() {
+        try {
+            const stored = localStorage.getItem('streamvault_selections');
+            if (stored) {
+                const selections = JSON.parse(stored);
+                this.selectedVideos = new Set(selections);
+            }
+        } catch (error) {
+            console.error('Failed to load selections:', error);
+        }
+    }
+    
+    formatCount(count) {
+        if (!count) return '0';
+        
+        if (count >= 1000000) {
+            return `${(count / 1000000).toFixed(1)}M`;
+        } else if (count >= 1000) {
+            return `${(count / 1000).toFixed(1)}K`;
+        } else {
+            return count.toString();
+        }
+    }
+    
+    formatDate(dateString) {
+        if (!dateString) return '';
+        
+        try {
+            // Parse YYYYMMDD format
+            const year = dateString.substring(0, 4);
+            const month = dateString.substring(4, 6);
+            const day = dateString.substring(6, 8);
+            const date = new Date(year, month - 1, day);
+            
+            const now = new Date();
+            const diffTime = Math.abs(now - date);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            
+            if (diffDays <= 7) {
+                return `${diffDays} days ago`;
+            } else if (diffDays <= 30) {
+                return `${Math.ceil(diffDays / 7)} weeks ago`;
+            } else if (diffDays <= 365) {
+                return `${Math.ceil(diffDays / 30)} months ago`;
+            } else {
+                return `${Math.ceil(diffDays / 365)} years ago`;
+            }
+        } catch (error) {
+            return dateString;
         }
     }
     
