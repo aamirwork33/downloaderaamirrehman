@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StreamVault - Advanced Video Downloader</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <!-- Inter Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+</head>
+<body>
+    <!-- Header -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container">
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-video me-2"></i>
+                StreamVault
+            </a>
+            <span class="navbar-text">
+                Advanced Video Downloader
+            </span>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container mt-4">
+        <!-- Tabs Navigation -->
+        <ul class="nav nav-pills mb-4 custom-tabs" id="downloadTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="single-tab" data-bs-toggle="pill" data-bs-target="#single" type="button" role="tab" aria-controls="single" aria-selected="true">
+                    <i class="fas fa-download me-2"></i>Single Video
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="bulk-tab" data-bs-toggle="pill" data-bs-target="#bulk" type="button" role="tab" aria-controls="bulk" aria-selected="false">
+                    <i class="fas fa-list me-2"></i>Bulk Download
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="playlist-tab" data-bs-toggle="pill" data-bs-target="#playlist" type="button" role="tab" aria-controls="playlist" aria-selected="false">
+                    <i class="fas fa-play-circle me-2"></i>Playlist/Channel
+                </button>
+            </li>
+        </ul>
+
+        <!-- Tab Content -->
+        <div class="tab-content" id="downloadTabsContent">
+            <!-- Single Video Tab -->
+            <div class="tab-pane fade show active" id="single" role="tabpanel" aria-labelledby="single-tab">
+                <div class="row">
+                    <div class="col-lg-8">
+                        <div class="card download-card">
+                            <div class="card-body">
+                                <h5 class="card-title">
+                                    <i class="fas fa-link me-2"></i>Enter Video URL
+                                </h5>
+                                
+                                <div class="mb-3">
+                                    <input type="url" class="form-control url-input" id="singleUrl" placeholder="https://www.youtube.com/watch?v=...">
+                                </div>
+                                
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <label for="formatSelect" class="form-label">Format</label>
+                                        <select class="form-select" id="formatSelect">
+                                            <option value="mp4">MP4 (Video)</option>
+                                            <option value="mp3">MP3 (Audio Only)</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="qualitySelect" class="form-label">Quality</label>
+                                        <select class="form-select" id="qualitySelect">
+                                            <option value="1080p">1080p (Full HD)</option>
+                                            <option value="720p" selected>720p (HD)</option>
+                                            <option value="480p">480p</option>
+                                            <option value="360p">360p</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                
+                                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                    <button class="btn btn-outline-primary me-md-2" id="analyzeBtn">
+                                        <i class="fas fa-search me-2"></i>Analyze
+                                    </button>
+                                    <button class="btn btn-primary" id="downloadBtn" disabled>
+                                        <i class="fas fa-download me-2"></i>Download
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Video Info Card -->
+                        <div class="card mt-4 d-none" id="videoInfoCard">
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <img id="videoThumbnail" class="img-fluid rounded" alt="Video thumbnail">
+                                    </div>
+                                    <div class="col-md-8">
+                                        <h5 id="videoTitle"></h5>
+                                        <p class="text-muted mb-1">
+                                            <i class="fas fa-user me-2"></i><span id="videoUploader"></span>
+                                        </p>
+                                        <p class="text-muted mb-0">
+                                            <i class="fas fa-clock me-2"></i><span id="videoDuration"></span>
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Quick Settings Panel -->
+                    <div class="col-lg-4">
+                        <div class="card settings-card">
+                            <div class="card-header">
+                                <h6 class="mb-0">
+                                    <i class="fas fa-cog me-2"></i>Quick Settings
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="form-check form-switch mb-3">
+                                    <input class="form-check-input" type="checkbox" id="autoStartSwitch">
+                                    <label class="form-check-label" for="autoStartSwitch">
+                                        Auto-start downloads
+                                    </label>
+                                </div>
+                                <div class="form-check form-switch mb-3">
+                                    <input class="form-check-input" type="checkbox" id="parallelSwitch">
+                                    <label class="form-check-label" for="parallelSwitch">
+                                        Parallel downloads
+                                    </label>
+                                </div>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="subtitlesSwitch">
+                                    <label class="form-check-label" for="subtitlesSwitch">
+                                        Extract subtitles
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Bulk Download Tab -->
+            <div class="tab-pane fade" id="bulk" role="tabpanel" aria-labelledby="bulk-tab">
+                <div class="card download-card">
+                    <div class="card-body">
+                        <h5 class="card-title">
+                            <i class="fas fa-list me-2"></i>Bulk Download
+                        </h5>
+                        <p class="text-muted">Enter multiple URLs (one per line) for batch downloading</p>
+                        
+                        <div class="mb-3">
+                            <textarea class="form-control url-input" id="bulkUrls" rows="6" placeholder="https://www.youtube.com/watch?v=...&#10;https://www.youtube.com/watch?v=...&#10;https://www.youtube.com/watch?v=..."></textarea>
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="bulkFormatSelect" class="form-label">Format</label>
+                                <select class="form-select" id="bulkFormatSelect">
+                                    <option value="mp4">MP4 (Video)</option>
+                                    <option value="mp3">MP3 (Audio Only)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="bulkQualitySelect" class="form-label">Quality</label>
+                                <select class="form-select" id="bulkQualitySelect">
+                                    <option value="1080p">1080p (Full HD)</option>
+                                    <option value="720p" selected>720p (HD)</option>
+                                    <option value="480p">480p</option>
+                                    <option value="360p">360p</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid">
+                            <button class="btn btn-primary" id="bulkDownloadBtn">
+                                <i class="fas fa-download me-2"></i>Start Bulk Download
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Playlist/Channel Tab -->
+            <div class="tab-pane fade" id="playlist" role="tabpanel" aria-labelledby="playlist-tab">
+                <div class="card download-card">
+                    <div class="card-body">
+                        <h5 class="card-title">
+                            <i class="fas fa-play-circle me-2"></i>Playlist/Channel Download
+                        </h5>
+                        <p class="text-muted">Download entire playlists or channel content</p>
+                        
+                        <div class="mb-3">
+                            <input type="url" class="form-control url-input" id="playlistUrl" placeholder="https://www.youtube.com/playlist?list=... or https://www.youtube.com/c/...">
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="playlistFormatSelect" class="form-label">Format</label>
+                                <select class="form-select" id="playlistFormatSelect">
+                                    <option value="mp4">MP4 (Video)</option>
+                                    <option value="mp3">MP3 (Audio Only)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="playlistQualitySelect" class="form-label">Quality</label>
+                                <select class="form-select" id="playlistQualitySelect">
+                                    <option value="1080p">1080p (Full HD)</option>
+                                    <option value="720p" selected>720p (HD)</option>
+                                    <option value="480p">480p</option>
+                                    <option value="360p">360p</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <button class="btn btn-outline-primary me-md-2" id="analyzePlaylistBtn">
+                                <i class="fas fa-search me-2"></i>Analyze
+                            </button>
+                            <button class="btn btn-primary" id="playlistDownloadBtn" disabled>
+                                <i class="fas fa-download me-2"></i>Download All
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Download Queue -->
+        <div class="card mt-4" id="downloadQueue">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="mb-0">
+                    <i class="fas fa-list-ul me-2"></i>Download Queue
+                </h6>
+                <button class="btn btn-sm btn-outline-secondary" id="clearCompletedBtn">
+                    <i class="fas fa-broom me-1"></i>Clear Completed
+                </button>
+            </div>
+            <div class="card-body" id="queueBody">
+                <div class="text-center text-muted">
+                    <i class="fas fa-inbox fa-2x mb-2"></i>
+                    <p>No downloads in queue</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3" id="toastContainer">
+    </div>
+
+    <!-- Loading Modal -->
+    <div class="modal fade" id="loadingModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-body text-center">
+                    <div class="spinner-border text-primary mb-3" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <h5 id="loadingText">Analyzing video...</h5>
+                    <p class="text-muted mb-0">Please wait while we process your request</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Custom JS -->
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
