@@ -1529,8 +1529,10 @@ class StreamVault {
             
             if (data.success && data.playlist && data.playlist.entries) {
                 console.log('Playlist loaded with', data.playlist.entries.length, 'videos');
+                console.log('Playlist data:', data.playlist);
                 this.renderPlaylistVideos(data.playlist.entries);
             } else {
+                console.error('Playlist load failed:', data);
                 throw new Error(data.error || 'Failed to load playlist videos');
             }
         } catch (error) {
@@ -1555,6 +1557,8 @@ class StreamVault {
             return;
         }
         
+        console.log('Rendering playlist videos:', videos?.length || 0);
+        
         if (!videos || videos.length === 0) {
             grid.innerHTML = `
                 <div class="text-center text-muted py-4">
@@ -1565,10 +1569,12 @@ class StreamVault {
             return;
         }
         
-        const videosHtml = videos.map(video => {
+        const videosHtml = videos.map((video, index) => {
             const isSelected = this.selectedVideos.has(video.id);
             const thumbnail = this.getValidThumbnail(video);
             const safeTitle = this.escapeHtml(video.title);
+            
+            console.log(`Video ${index}:`, video.title, 'Thumbnail:', thumbnail);
             
             return `
                 <div class="video-item ${isSelected ? 'selected' : ''}" data-video-id="${video.id}" onclick="streamVault.toggleVideoSelection('${video.id}')">
@@ -1595,7 +1601,13 @@ class StreamVault {
             `;
         }).join('');
         
+        console.log('Setting grid HTML with', videos.length, 'videos');
         grid.innerHTML = videosHtml;
+        
+        // Force re-render by triggering layout
+        grid.style.display = 'none';
+        grid.offsetHeight; // Force reflow
+        grid.style.display = 'grid';
         
         // Update filtered videos and selection summary
         this.filteredVideos = videos;
