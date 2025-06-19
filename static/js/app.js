@@ -1346,14 +1346,14 @@ class StreamVault {
         
         const folderPathElement = document.getElementById('selectedFolderPath');
         if (folderPathElement) {
-            folderPathElement.textContent = 'None';
+            folderPathElement.textContent = 'No folder selected';
             folderPathElement.classList.remove('text-success');
             folderPathElement.classList.add('text-muted');
         }
         
         const selectBtn = document.getElementById('selectFolderBtn');
         if (selectBtn) {
-            selectBtn.innerHTML = '<i class="fas fa-folder-open me-1"></i>Folder';
+            selectBtn.innerHTML = '<i class="fas fa-folder-open me-2"></i>Select Folder';
             selectBtn.classList.remove('btn-outline-success');
             selectBtn.classList.add('btn-outline-info');
         }
@@ -1434,13 +1434,14 @@ class StreamVault {
         `;
         
         try {
-            // Fetch playlist videos
+            // Fetch playlist videos using the playlist URL
+            const playlistUrl = playlist.webpage_url || playlist.url;
             const response = await fetch('/api/analyze-playlist', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ url: playlist.url })
+                body: JSON.stringify({ url: playlistUrl })
             });
             
             const data = await response.json();

@@ -216,7 +216,6 @@ class DownloadManager:
                 '--no-download',
                 '--flat-playlist',
                 '--ignore-errors',
-                '--playlist-end', '30',
                 url + '/playlists'
             ]
             
@@ -228,14 +227,15 @@ class DownloadManager:
                     if line.strip():
                         try:
                             entry = json.loads(line)
-                            if entry.get('_type') == 'url':
+                            if entry.get('_type') == 'url' and 'playlist' in entry.get('url', ''):
                                 playlists.append({
                                     'id': entry.get('id', ''),
-                                    'title': entry.get('title', 'Unknown'),
+                                    'title': entry.get('title', 'Unknown Playlist'),
                                     'url': entry.get('url', ''),
                                     'webpage_url': entry.get('webpage_url', ''),
-                                    'playlist_count': entry.get('playlist_count', 0),
-                                    'thumbnail': entry.get('thumbnail', '')
+                                    'video_count': entry.get('playlist_count', 0),
+                                    'thumbnail': entry.get('thumbnail', ''),
+                                    'updated': entry.get('upload_date', '')
                                 })
                         except json.JSONDecodeError:
                             continue

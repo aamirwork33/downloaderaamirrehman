@@ -326,24 +326,24 @@
                     <!-- Controls Row -->
                     <div class="row mb-2">
                         <div class="col-md-6">
-                            <div class="d-flex gap-1">
+                            <div class="d-flex gap-2">
                                 <button class="btn btn-outline-primary btn-xs" id="selectAllBtn">
-                                    <i class="fas fa-check-square me-1"></i>All
+                                    <i class="fas fa-check-square me-1"></i>Select All
                                 </button>
                                 <button class="btn btn-outline-secondary btn-xs" id="unselectAllBtn">
-                                    <i class="fas fa-square me-1"></i>None
+                                    <i class="fas fa-square me-1"></i>Unselect All
                                 </button>
                             </div>
                         </div>
                         <div class="col-md-6">
-                            <div class="d-flex gap-1">
+                            <div class="d-flex gap-2">
                                 <select class="form-select form-select-xs" id="sortSelect">
-                                    <option value="newest">Newest</option>
-                                    <option value="oldest">Oldest</option>
+                                    <option value="newest">Newest First</option>
+                                    <option value="oldest">Oldest First</option>
                                     <option value="most_viewed">Most Viewed</option>
-                                    <option value="title">A-Z</option>
+                                    <option value="title">Title A-Z</option>
                                 </select>
-                                <input type="text" class="form-control form-control-xs" id="searchInput" placeholder="Search...">
+                                <input type="text" class="form-control form-control-xs" id="searchInput" placeholder="Search videos...">
                             </div>
                         </div>
                     </div>
@@ -399,28 +399,28 @@
                             <span class="text-muted ms-2">•</span>
                             <span id="estimatedSize" class="text-muted ms-2">0 MB estimated</span>
                         </div>
-                        <div class="d-flex gap-2 align-items-center flex-wrap">
+                        <div class="d-flex gap-3 align-items-center flex-wrap">
                             <div class="folder-selection d-flex align-items-center">
                                 <input type="file" id="folderInput" webkitdirectory directory style="display: none;">
                                 <button class="btn btn-outline-info btn-xs" id="selectFolderBtn">
-                                    <i class="fas fa-folder-open me-1"></i>Folder
+                                    <i class="fas fa-folder-open me-2"></i>Select Folder
                                 </button>
-                                <span class="text-muted ms-1 small" id="selectedFolderPath">None</span>
+                                <span class="text-muted ms-2" id="selectedFolderPath">No folder selected</span>
                             </div>
-                            <div class="download-options d-flex gap-1">
+                            <div class="download-options d-flex gap-2">
                                 <select class="form-select form-select-xs" id="modalFormatSelect">
-                                    <option value="mp4">MP4</option>
-                                    <option value="mp3">MP3</option>
+                                    <option value="mp4">MP4 Video</option>
+                                    <option value="mp3">MP3 Audio</option>
                                 </select>
                                 <select class="form-select form-select-xs" id="modalQualitySelect">
-                                    <option value="1080p">1080p</option>
-                                    <option value="720p" selected>720p</option>
+                                    <option value="1080p">1080p HD</option>
+                                    <option value="720p" selected>720p HD</option>
                                     <option value="480p">480p</option>
                                     <option value="360p">360p</option>
                                 </select>
                             </div>
-                            <button class="btn btn-success btn-sm" id="downloadSelectedBtn" disabled>
-                                <i class="fas fa-download me-1"></i>Download
+                            <button class="btn btn-success btn-xs" id="downloadSelectedBtn" disabled>
+                                <i class="fas fa-download me-2"></i>Download Selected
                             </button>
                         </div>
                     </div>
