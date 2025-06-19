@@ -1628,22 +1628,83 @@ class StreamVault {
         }).join('');
         
         console.log('Setting grid HTML with', videos.length, 'videos');
+        console.log('Grid element:', grid);
+        console.log('HTML to insert:', videosHtml.substring(0, 200) + '...');
+        
         grid.innerHTML = videosHtml;
         
-        // Ensure grid is visible and styled correctly
-        grid.style.display = 'flex';
-        grid.style.flexDirection = 'column';
-        grid.style.gap = '8px';
-        grid.style.padding = '12px 0';
-        grid.style.minHeight = '200px';
+        // Force visibility and styling
+        grid.style.cssText = `
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 8px !important;
+            padding: 12px 0 !important;
+            min-height: 200px !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            width: 100% !important;
+            background: transparent !important;
+        `;
         
-        // Force a layout recalculation
+        // Force all video items to be visible with aggressive debugging
         setTimeout(() => {
-            grid.style.opacity = '0.99';
-            setTimeout(() => {
-                grid.style.opacity = '1';
-            }, 10);
-        }, 10);
+            const videoItems = grid.querySelectorAll('.video-item');
+            console.log('Found video items:', videoItems.length);
+            console.log('Grid computed style:', window.getComputedStyle(grid));
+            
+            if (videoItems.length === 0) {
+                console.error('No video items found! HTML:', grid.innerHTML);
+                console.error('Grid parent:', grid.parentElement);
+                console.error('Grid classes:', grid.className);
+                console.error('Grid ID:', grid.id);
+                
+                // Force the grid to be visible first
+                grid.style.cssText = `
+                    display: block !important;
+                    visibility: visible !important;
+                    opacity: 1 !important;
+                    background: #f0f0f0 !important;
+                    border: 2px solid blue !important;
+                    padding: 20px !important;
+                    min-height: 300px !important;
+                    width: 100% !important;
+                `;
+                
+                // Add a highly visible test item
+                grid.innerHTML = `
+                    <div style="display: block !important; background: red !important; color: white !important; padding: 20px !important; margin: 10px 0 !important; border: 3px solid black !important; font-size: 16px !important; font-weight: bold !important;">
+                        🔴 TEST VIDEO ITEM - If you see this red box, the grid container works
+                    </div>
+                    <div style="display: block !important; background: green !important; color: white !important; padding: 20px !important; margin: 10px 0 !important; border: 3px solid black !important; font-size: 16px !important; font-weight: bold !important;">
+                        🟢 SECOND TEST ITEM - Videos should appear here
+                    </div>
+                ` + grid.innerHTML;
+            }
+            
+            videoItems.forEach((item, index) => {
+                console.log(`Video item ${index}:`, item);
+                console.log(`Video item ${index} computed style:`, window.getComputedStyle(item));
+                item.style.cssText = `
+                    display: flex !important;
+                    visibility: visible !important;
+                    opacity: 1 !important;
+                    background: rgba(255, 255, 255, 0.98) !important;
+                    border: 2px solid red !important;
+                    border-radius: 8px !important;
+                    padding: 12px !important;
+                    margin-bottom: 8px !important;
+                    width: 100% !important;
+                    min-height: 80px !important;
+                    position: relative !important;
+                    z-index: 10 !important;
+                `;
+            });
+            
+            // Force grid to redraw
+            grid.style.display = 'none';
+            grid.offsetHeight;
+            grid.style.display = 'flex';
+        }, 100);
         
         // Update filtered videos and selection summary
         this.filteredVideos = videos;
