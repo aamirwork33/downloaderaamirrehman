@@ -340,14 +340,27 @@ class DownloadManager:
             logging.error(f"Error extracting playlist info: {str(e)}")
             return None
     
-    def start_download(self, url: str, format_type: str, quality: str) -> Optional[str]:
-        """Start a new download"""
+    def start_download(self, url: str, format_type: str, quality: str, custom_folder: Optional[str] = None, channel_name: Optional[str] = None) -> Optional[str]:
+        """Start a new download with auto-folder creation"""
         download_id = str(uuid.uuid4())
         
         # Get video info for better metadata
         video_info = self.get_video_info(url)
         title = video_info.get('title', 'Unknown Video') if video_info else 'Unknown Video'
         thumbnail = video_info.get('thumbnail') if video_info else None
+        
+        # Determine download folder
+        if custom_folder:
+            download_folder = custom_folder
+        elif channel_name:
+            # Auto-create folder with channel name
+            safe_channel_name = self._sanitize_filename(channel_name)
+            download_folder = os.path.join(self.download_folder, safe_channel_name)
+        else:
+            download_folder = self.download_folder
+        
+        # Create folder if it doesn't exist
+        os.makedirs(download_folder, exist_ok=True)
         
         # Initialize download entry
         self.downloads[download_id] = {
@@ -363,7 +376,8 @@ class DownloadManager:
             'error': None,
             'start_time': time.time(),
             'title': title,
-            'thumbnail': thumbnail
+            'thumbnail': thumbnail,
+            'download_folder': download_folder
         }
         
         # Submit download task to executor
@@ -372,6 +386,14 @@ class DownloadManager:
         
         return download_id
     
+    def _sanitize_filename(self, filename: str) -> str:
+        """Sanitize filename for safe directory creation"""
+        import re
+        # Remove or replace invalid characters
+        sanitized = re.sub(r'[<>:"/\\|?*]', '_', filename)
+        sanitized = re.sub(r'\s+', ' ', sanitized).strip()
+        return sanitized[:100]  # Limit length
+    
     def _download_video(self, download_id: str, url: str, format_type: str, quality: str):
         """Actual download process"""
         try:
@@ -379,7 +401,8 @@ class DownloadManager:
             logging.info(f"Starting download for {download_id}: {url}")
             
             # Build yt-dlp command with better error handling and progress output
-            output_template = os.path.join(self.download_folder, '%(title)s.%(ext)s')
+            download_folder = self.downloads[download_id].get('download_folder', self.download_folder)
+            output_template = os.path.join(download_folder, '%(title)s.%(ext)s')
             
             if format_type == 'mp3':
                 quality_filter = 'bestaudio[ext=m4a]/bestaudio/best'
