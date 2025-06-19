@@ -1516,6 +1516,7 @@ class StreamVault {
             // Use the proper playlist URL for fetching videos
             const playlistUrl = playlist.webpage_url || playlist.url;
             console.log('Loading playlist:', playlistUrl);
+            console.log('Full playlist object:', playlist);
             
             const response = await fetch('/api/analyze-playlist', {
                 method: 'POST',
@@ -1525,12 +1526,34 @@ class StreamVault {
                 body: JSON.stringify({ url: playlistUrl })
             });
             
-            const data = await response.json();
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
             
-            if (data.success && data.playlist && data.playlist.entries) {
-                console.log('Playlist loaded with', data.playlist.entries.length, 'videos');
-                console.log('Playlist data:', data.playlist);
-                this.renderPlaylistVideos(data.playlist.entries);
+            const data = await response.json();
+            console.log('Response received:', data);
+            
+            if (data.success && data.playlist) {
+                console.log('Playlist type:', data.playlist.type);
+                
+                if (data.playlist.type === 'playlist' && data.playlist.entries) {
+                    console.log('Regular playlist loaded with', data.playlist.entries.length, 'videos');
+                    this.renderPlaylistVideos(data.playlist.entries);
+                } else if (data.playlist.type === 'channel' && data.playlist.all_videos) {
+                    console.log('Channel playlist loaded with', data.playlist.all_videos.length, 'videos');
+                    this.renderPlaylistVideos(data.playlist.all_videos);
+                } else {
+                    console.log('No entries found in playlist, data:', data.playlist);
+                    if (videosGrid) {
+                        videosGrid.innerHTML = `
+                            <div class="text-center text-muted py-4">
+                                <i class="fas fa-info-circle fa-2x mb-2"></i>
+                                <p>This playlist appears to be empty or unavailable</p>
+                                <small>Playlist URL: ${playlistUrl}</small>
+                            </div>
+                        `;
+                    }
+                }
             } else {
                 console.error('Playlist load failed:', data);
                 throw new Error(data.error || 'Failed to load playlist videos');

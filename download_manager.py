@@ -209,13 +209,14 @@ class DownloadManager:
                         except json.JSONDecodeError:
                             continue
             
-            # Get playlists
+            # Get playlists using a different approach
             playlists_cmd = [
                 'yt-dlp',
                 '--dump-json',
                 '--no-download',
                 '--flat-playlist',
                 '--ignore-errors',
+                '--extractor-args', 'youtube:tab_info=playlists',
                 url + '/playlists'
             ]
             
@@ -227,41 +228,59 @@ class DownloadManager:
                     if line.strip():
                         try:
                             entry = json.loads(line)
-                            if entry.get('_type') == 'url' and 'playlist' in entry.get('url', ''):
-                                # Get more detailed playlist info
+                            if entry.get('_type') == 'url':
+                                # Extract playlist ID from URL
                                 playlist_url = entry.get('url', '')
                                 playlist_id = entry.get('id', '')
                                 
-                                # Try to get thumbnail from playlist info
+                                # Ensure we have a proper YouTube playlist URL
+                                if playlist_id and not playlist_url.startswith('https://'):
+                                    playlist_url = f"https://www.youtube.com/playlist?list={playlist_id}"
+                                
+                                # Get thumbnail - try from entry first, then fallback
                                 thumbnail_url = entry.get('thumbnail', '')
-                                if not thumbnail_url:
-                                    # Try to get first video thumbnail as playlist thumbnail
-                                    try:
-                                        thumb_cmd = [
-                                            'yt-dlp',
-                                            '--dump-json',
-                                            '--no-download',
-                                            '--playlist-items', '1',
-                                            playlist_url
-                                        ]
-                                        thumb_result = subprocess.run(thumb_cmd, capture_output=True, text=True, timeout=15)
-                                        if thumb_result.returncode == 0 and thumb_result.stdout.strip():
-                                            thumb_data = json.loads(thumb_result.stdout.strip().split('\n')[0])
-                                            thumbnail_url = thumb_data.get('thumbnail', '')
-                                    except:
-                                        pass
                                 
                                 playlists.append({
                                     'id': playlist_id,
                                     'title': entry.get('title', 'Unknown Playlist'),
                                     'url': playlist_url,
-                                    'webpage_url': entry.get('webpage_url', playlist_url),
+                                    'webpage_url': playlist_url,
                                     'video_count': entry.get('playlist_count', 0),
                                     'thumbnail': thumbnail_url,
                                     'updated': entry.get('upload_date', '')
                                 })
                         except json.JSONDecodeError:
                             continue
+            
+            # If no playlists found with the above method, try alternative approach
+            if not playlists:
+                try:
+                    alt_cmd = [
+                        'yt-dlp',
+                        '--dump-json',
+                        '--no-download',
+                        '--ignore-errors',
+                        '--playlist-end', '5',
+                        f"{url}/playlists"
+                    ]
+                    alt_result = subprocess.run(alt_cmd, capture_output=True, text=True, timeout=30)
+                    
+                    if alt_result.returncode == 0 and alt_result.stdout.strip():
+                        data = json.loads(alt_result.stdout.strip().split('\n')[0])
+                        if data.get('entries'):
+                            for entry in data['entries'][:5]:  # Limit to first 5 playlists
+                                if entry.get('_type') == 'playlist':
+                                    playlists.append({
+                                        'id': entry.get('id', ''),
+                                        'title': entry.get('title', 'Unknown Playlist'),
+                                        'url': f"https://www.youtube.com/playlist?list={entry.get('id', '')}",
+                                        'webpage_url': f"https://www.youtube.com/playlist?list={entry.get('id', '')}",
+                                        'video_count': len(entry.get('entries', [])),
+                                        'thumbnail': entry.get('thumbnail', ''),
+                                        'updated': entry.get('upload_date', '')
+                                    })
+                except:
+                    pass
             
             return {
                 'type': 'channel',
