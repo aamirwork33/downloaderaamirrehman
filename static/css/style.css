@@ -1125,67 +1125,95 @@ body {
     }
 }
 
-/* Playlist Videos Grid */
+/* Playlist Videos List */
 #playlistVideosGrid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
     padding: 12px 0;
     min-height: 200px;
 }
 
 #playlistVideosGrid .video-item {
+    display: flex;
+    align-items: flex-start;
     background: rgba(255, 255, 255, 0.95);
     border: 1px solid rgba(102, 126, 234, 0.1);
     border-radius: 8px;
-    padding: 8px;
+    padding: 12px;
     cursor: pointer;
     transition: all 0.2s ease;
     position: relative;
+    gap: 12px;
 }
 
 #playlistVideosGrid .video-item:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+    background: rgba(102, 126, 234, 0.05);
     border-color: rgba(102, 126, 234, 0.3);
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1);
 }
 
 #playlistVideosGrid .video-item.selected {
     border-color: #667eea;
-    background: rgba(102, 126, 234, 0.05);
+    background: rgba(102, 126, 234, 0.08);
+}
+
+#playlistVideosGrid .video-checkbox {
+    margin-top: 2px;
+    margin-right: 8px;
+    flex-shrink: 0;
 }
 
 #playlistVideosGrid .video-thumbnail {
-    width: 100%;
-    height: 110px;
+    width: 120px;
+    height: 68px;
     border-radius: 6px;
     object-fit: cover;
     background: #f8f9fa;
+    flex-shrink: 0;
+    position: relative;
+}
+
+#playlistVideosGrid .video-duration {
+    position: absolute;
+    bottom: 4px;
+    right: 4px;
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 0.7rem;
+    font-weight: 500;
+}
+
+#playlistVideosGrid .video-info {
+    flex: 1;
+    min-width: 0;
 }
 
 #playlistVideosGrid .video-title {
     font-weight: 500;
-    font-size: 0.85rem;
-    line-height: 1.3;
-    margin: 8px 0 4px;
+    font-size: 0.9rem;
+    line-height: 1.4;
+    margin-bottom: 6px;
+    color: #2d3748;
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
-    color: #2d3748;
 }
 
 #playlistVideosGrid .video-meta {
-    font-size: 0.7rem;
+    font-size: 0.75rem;
     color: #6c757d;
     display: flex;
-    flex-direction: column;
-    gap: 2px;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
 }
 
-#playlistVideosGrid .video-checkbox {
-    position: absolute;
-    top: 4px;
-    left: 4px;
-    z-index: 2;
+#playlistVideosGrid .video-meta span {
+    display: flex;
+    align-items: center;
+    gap: 3px;
 }

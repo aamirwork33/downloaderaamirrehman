@@ -1593,8 +1593,8 @@ class StreamVault {
                     <div class="video-info">
                         <div class="video-title" title="${safeTitle}">${safeTitle}</div>
                         <div class="video-meta">
-                            ${video.view_count ? `<span><i class="fas fa-eye me-1"></i>${this.formatCount(video.view_count)} views</span>` : ''}
-                            ${video.upload_date ? `<span><i class="fas fa-calendar me-1"></i>${this.formatDate(video.upload_date)}</span>` : ''}
+                            ${video.view_count ? `<span><i class="fas fa-eye"></i>${this.formatCount(video.view_count)} views</span>` : ''}
+                            ${video.upload_date ? `<span><i class="fas fa-calendar"></i>${this.formatDate(video.upload_date)}</span>` : ''}
                         </div>
                     </div>
                 </div>
@@ -1607,7 +1607,7 @@ class StreamVault {
         // Force re-render by triggering layout
         grid.style.display = 'none';
         grid.offsetHeight; // Force reflow
-        grid.style.display = 'grid';
+        grid.style.display = 'flex';
         
         // Update filtered videos and selection summary
         this.filteredVideos = videos;
