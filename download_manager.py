@@ -209,98 +209,82 @@ class DownloadManager:
                         except json.JSONDecodeError:
                             continue
             
-            # Get playlists using a different approach
-            playlists_cmd = [
-                'yt-dlp',
-                '--dump-json',
-                '--no-download',
-                '--flat-playlist',
-                '--ignore-errors',
-                '--extractor-args', 'youtube:tab_info=playlists',
-                url + '/playlists'
-            ]
-            
-            playlists_result = subprocess.run(playlists_cmd, capture_output=True, text=True, timeout=60)
+            # Try multiple approaches to get playlists
             playlists = []
             
-            if playlists_result.returncode == 0 and playlists_result.stdout.strip():
-                for line in playlists_result.stdout.strip().split('\n'):
-                    if line.strip():
-                        try:
-                            entry = json.loads(line)
-                            if entry.get('_type') == 'url':
-                                # Extract playlist ID from URL
-                                playlist_url = entry.get('url', '')
-                                playlist_id = entry.get('id', '')
-                                
-                                # Ensure we have a proper YouTube playlist URL
-                                if playlist_id and not playlist_url.startswith('https://'):
-                                    playlist_url = f"https://www.youtube.com/playlist?list={playlist_id}"
-                                
-                                # Get thumbnail - try from entry first, then fallback
-                                thumbnail_url = entry.get('thumbnail', '')
-                                
-                                playlists.append({
-                                    'id': playlist_id,
-                                    'title': entry.get('title', 'Unknown Playlist'),
-                                    'url': playlist_url,
-                                    'webpage_url': playlist_url,
-                                    'video_count': entry.get('playlist_count', 0),
-                                    'thumbnail': thumbnail_url,
-                                    'updated': entry.get('upload_date', '')
-                                })
-                        except json.JSONDecodeError:
-                            continue
+            # Method 1: Direct playlists extraction
+            try:
+                playlists_cmd = [
+                    'yt-dlp',
+                    '--dump-json',
+                    '--no-download',
+                    '--flat-playlist', 
+                    '--ignore-errors',
+                    f"{url}/playlists"
+                ]
+                
+                playlists_result = subprocess.run(playlists_cmd, capture_output=True, text=True, timeout=60)
+                logging.info(f"Playlists command output: {playlists_result.stdout[:500]}")
+                logging.info(f"Playlists command errors: {playlists_result.stderr[:500]}")
+                
+                if playlists_result.returncode == 0 and playlists_result.stdout.strip():
+                    for line in playlists_result.stdout.strip().split('\n'):
+                        if line.strip():
+                            try:
+                                entry = json.loads(line)
+                                # Look for URL type entries that point to playlists
+                                if entry.get('_type') == 'url' and 'playlist' in entry.get('url', ''):
+                                    playlist_id = entry.get('id', '')
+                                    playlist_url = entry.get('url', '')
+                                    if not playlist_url.startswith('http'):
+                                        playlist_url = f"https://www.youtube.com/playlist?list={playlist_id}"
+                                    
+                                    # Get thumbnail from thumbnails array if available
+                                    thumbnail_url = ''
+                                    if entry.get('thumbnails'):
+                                        thumbnail_url = entry['thumbnails'][0].get('url', '')
+                                    
+                                    playlists.append({
+                                        'id': playlist_id,
+                                        'title': entry.get('title', 'Unknown Playlist'),
+                                        'url': playlist_url,
+                                        'webpage_url': entry.get('webpage_url', playlist_url),
+                                        'video_count': entry.get('playlist_count', 0),
+                                        'thumbnail': thumbnail_url,
+                                        'updated': entry.get('upload_date', '')
+                                    })
+                                    logging.info(f"Found playlist: {entry.get('title')} with ID: {playlist_id}")
+                            except json.JSONDecodeError:
+                                continue
+            except Exception as e:
+                logging.error(f"Method 1 failed: {e}")
             
-            # If no playlists found with the above method, create sample playlists for testing
+            # Method 2: If no playlists found, try channel tab extraction
             if not playlists:
-                logging.warning(f"No playlists found for channel {url}, creating sample playlists")
-                # Create some sample playlists based on videos we already have
-                if all_videos:
-                    # Group videos by categories for sample playlists
-                    sample_playlists = [
-                        {
-                            'id': 'sample_sad',
-                            'title': 'Sad',
-                            'url': f"{url}/playlist_sad",
-                            'webpage_url': f"{url}/playlist_sad", 
-                            'video_count': min(4, len(all_videos)),
-                            'thumbnail': all_videos[0].get('thumbnail', '') if all_videos else '',
-                            'updated': '',
-                            'sample_videos': all_videos[:4]  # Store sample videos for this playlist
-                        },
-                        {
-                            'id': 'sample_romantic',
-                            'title': 'Romantic',
-                            'url': f"{url}/playlist_romantic",
-                            'webpage_url': f"{url}/playlist_romantic",
-                            'video_count': min(4, len(all_videos)),
-                            'thumbnail': all_videos[1].get('thumbnail', '') if len(all_videos) > 1 else '',
-                            'updated': '',
-                            'sample_videos': all_videos[1:5] if len(all_videos) > 1 else all_videos[:4]
-                        },
-                        {
-                            'id': 'sample_nfak',
-                            'title': 'NFAK',
-                            'url': f"{url}/playlist_nfak",
-                            'webpage_url': f"{url}/playlist_nfak",
-                            'video_count': min(4, len(all_videos)),
-                            'thumbnail': all_videos[2].get('thumbnail', '') if len(all_videos) > 2 else '',
-                            'updated': '',
-                            'sample_videos': all_videos[2:6] if len(all_videos) > 2 else all_videos[:4]
-                        },
-                        {
-                            'id': 'sample_bohemia',
-                            'title': 'Bohemia',
-                            'url': f"{url}/playlist_bohemia",
-                            'webpage_url': f"{url}/playlist_bohemia",
-                            'video_count': min(4, len(all_videos)),
-                            'thumbnail': all_videos[3].get('thumbnail', '') if len(all_videos) > 3 else '',
-                            'updated': '',
-                            'sample_videos': all_videos[3:7] if len(all_videos) > 3 else all_videos[:4]
-                        }
+                try:
+                    tab_cmd = [
+                        'yt-dlp',
+                        '--dump-json',
+                        '--no-download',
+                        '--ignore-errors',
+                        '--playlist-end', '5',
+                        f"{url}?view_as=subscriber"
                     ]
-                    playlists.extend(sample_playlists)
+                    
+                    tab_result = subprocess.run(tab_cmd, capture_output=True, text=True, timeout=45)
+                    
+                    if tab_result.returncode == 0 and tab_result.stdout.strip():
+                        data = json.loads(tab_result.stdout.strip().split('\n')[0])
+                        # Look for playlists in channel data
+                        if 'playlists' in str(data).lower():
+                            logging.info("Found playlist data in channel extraction")
+                except Exception as e:
+                    logging.error(f"Method 2 failed: {e}")
+            
+            # Log the results
+            logging.info(f"Found {len(playlists)} playlists for channel {url}")
+            for playlist in playlists:
+                logging.info(f"Playlist: {playlist.get('title')} ({playlist.get('video_count')} videos)")
             
             return {
                 'type': 'channel',
@@ -324,22 +308,19 @@ class DownloadManager:
     def _get_simple_playlist_info(self, url: str) -> Optional[Dict]:
         """Get simple playlist information for non-channel URLs"""
         try:
-            # Check if this is a sample playlist URL from channel analysis
-            if '/playlist_' in url:
-                # This is a sample playlist, look up the sample videos from channel data
-                playlist_name = url.split('/playlist_')[-1]
-                logging.info(f"Loading sample playlist: {playlist_name}")
+            # Check if this is a demo playlist URL
+            if url.startswith('demo://playlist/'):
+                playlist_name = url.split('/')[-1]
+                logging.info(f"Loading demo playlist: {playlist_name}")
                 
-                # For sample playlists, we need to fetch from the channel data
-                # This is a workaround for demo purposes
                 return {
-                    'type': 'sample_playlist',
+                    'type': 'demo_playlist',
                     'title': playlist_name.replace('_', ' ').title(),
                     'uploader': 'Channel',
-                    'entry_count': 4,
-                    'entries': [],  # Will be populated by the frontend
+                    'entry_count': 0,
+                    'entries': [],
                     'url': url,
-                    'sample_playlist': True
+                    'demo_playlist': True
                 }
             
             cmd = [
