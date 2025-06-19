@@ -172,5 +172,45 @@ def cancel_download(download_id):
         logging.error(f"Error cancelling download: {str(e)}")
         return jsonify({'error': f'Failed to cancel download: {str(e)}'}), 500
 
+@app.route('/api/pause-download/<download_id>', methods=['POST'])
+def pause_download(download_id):
+    """Pause a specific download"""
+    try:
+        success = download_manager.pause_download(download_id)
+        return jsonify({'success': success})
+    except Exception as e:
+        logging.error(f"Error pausing download: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/resume-download/<download_id>', methods=['POST'])
+def resume_download(download_id):
+    """Resume a specific download"""
+    try:
+        success = download_manager.resume_download(download_id)
+        return jsonify({'success': success})
+    except Exception as e:
+        logging.error(f"Error resuming download: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/pause-all-downloads', methods=['POST'])
+def pause_all_downloads():
+    """Pause all active downloads"""
+    try:
+        success = download_manager.pause_all_downloads()
+        return jsonify({'success': success})
+    except Exception as e:
+        logging.error(f"Error pausing all downloads: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/resume-all-downloads', methods=['POST'])
+def resume_all_downloads():
+    """Resume all paused downloads"""
+    try:
+        success = download_manager.resume_all_downloads()
+        return jsonify({'success': success})
+    except Exception as e:
+        logging.error(f"Error resuming all downloads: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

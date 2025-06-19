@@ -462,6 +462,11 @@ class StreamVault {
     renderVideoGrid(gridId) {
         const grid = document.getElementById(gridId);
         
+        if (!grid) {
+            console.error(`Grid element with ID '${gridId}' not found`);
+            return;
+        }
+        
         if (this.filteredVideos.length === 0) {
             grid.innerHTML = `
                 <div class="text-center text-muted py-4">
@@ -959,10 +964,20 @@ class StreamVault {
                                         ${download.filename ? `<span class="filename-info"><i class="fas fa-file me-1"></i>${this.truncateText(download.filename, 30)}</span>` : ''}
                                     </div>
                                 </div>
-                                <div class="d-flex align-items-center ms-3">
+                                <div class="d-flex align-items-center ms-3 gap-1">
                                     <span class="status-badge ${statusClass}">${this.getStatusText(download.status)}</span>
-                                    ${download.status === 'downloading' || download.status === 'starting' ? 
-                                        `<button class="btn btn-sm btn-outline-danger ms-2" onclick="streamVault.cancelDownload('${downloadId}')" title="Cancel Download">
+                                    ${download.status === 'downloading' ? 
+                                        `<button class="btn btn-sm btn-outline-warning" onclick="streamVault.pauseDownload('${downloadId}')" title="Pause Download">
+                                            <i class="fas fa-pause"></i>
+                                        </button>` : ''
+                                    }
+                                    ${download.status === 'paused' ? 
+                                        `<button class="btn btn-sm btn-outline-success" onclick="streamVault.resumeDownload('${downloadId}')" title="Resume Download">
+                                            <i class="fas fa-play"></i>
+                                        </button>` : ''
+                                    }
+                                    ${download.status === 'downloading' || download.status === 'starting' || download.status === 'paused' ? 
+                                        `<button class="btn btn-sm btn-outline-danger" onclick="streamVault.cancelDownload('${downloadId}')" title="Cancel Download">
                                             <i class="fas fa-times"></i>
                                         </button>` : ''
                                     }
@@ -1014,10 +1029,79 @@ class StreamVault {
         queueBody.innerHTML = queueHtml;
     }
     
+    async pauseDownload(downloadId) {
+        try {
+            const response = await fetch(`/api/pause-download/${downloadId}`, {
+                method: 'POST'
+            });
+            
+            if (response.ok) {
+                this.showToast('Download paused', 'info');
+            } else {
+                this.showToast('Failed to pause download', 'error');
+            }
+        } catch (error) {
+            console.error('Error pausing download:', error);
+            this.showToast('Error pausing download', 'error');
+        }
+    }
+
+    async resumeDownload(downloadId) {
+        try {
+            const response = await fetch(`/api/resume-download/${downloadId}`, {
+                method: 'POST'
+            });
+            
+            if (response.ok) {
+                this.showToast('Download resumed', 'info');
+            } else {
+                this.showToast('Failed to resume download', 'error');
+            }
+        } catch (error) {
+            console.error('Error resuming download:', error);
+            this.showToast('Error resuming download', 'error');
+        }
+    }
+
+    async pauseAllDownloads() {
+        try {
+            const response = await fetch('/api/pause-all-downloads', {
+                method: 'POST'
+            });
+            
+            if (response.ok) {
+                this.showToast('All downloads paused', 'info');
+            } else {
+                this.showToast('Failed to pause downloads', 'error');
+            }
+        } catch (error) {
+            console.error('Error pausing all downloads:', error);
+            this.showToast('Error pausing downloads', 'error');
+        }
+    }
+
+    async resumeAllDownloads() {
+        try {
+            const response = await fetch('/api/resume-all-downloads', {
+                method: 'POST'
+            });
+            
+            if (response.ok) {
+                this.showToast('All downloads resumed', 'info');
+            } else {
+                this.showToast('Failed to resume downloads', 'error');
+            }
+        } catch (error) {
+            console.error('Error resuming all downloads:', error);
+            this.showToast('Error resuming downloads', 'error');
+        }
+    }
+
     getStatusText(status) {
         const statusMap = {
             'starting': 'Starting',
             'downloading': 'Downloading',
+            'paused': 'Paused',
             'completed': 'Completed',
             'failed': 'Failed',
             'cancelled': 'Cancelled'

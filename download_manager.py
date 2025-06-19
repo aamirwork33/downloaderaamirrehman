@@ -176,6 +176,17 @@ class DownloadManager:
                 url + '/shorts'
             ]
             
+            # Get live streams (if available)
+            live_cmd = [
+                'yt-dlp',
+                '--dump-json',
+                '--no-download',
+                '--flat-playlist',
+                '--ignore-errors',
+                '--no-playlist-reverse',
+                url + '/streams'
+            ]
+            
             shorts_result = subprocess.run(shorts_cmd, capture_output=True, text=True, timeout=60)
             shorts = []
             
@@ -367,10 +378,11 @@ class DownloadManager:
             self.downloads[download_id]['status'] = 'downloading'
             logging.info(f"Starting download for {download_id}: {url}")
             
-            # Build yt-dlp command with better error handling
+            # Build yt-dlp command with better error handling and progress output
+            output_template = os.path.join(self.download_folder, '%(title)s.%(ext)s')
+            
             if format_type == 'mp3':
                 quality_filter = 'bestaudio[ext=m4a]/bestaudio/best'
-                output_template = os.path.join(self.download_folder, '%(title)s.%(ext)s')
                 cmd = [
                     'yt-dlp',
                     '--newline',
@@ -380,22 +392,23 @@ class DownloadManager:
                     '--audio-quality', '0',
                     '-o', output_template,
                     '-f', quality_filter,
-                    '--ignore-errors',
+                    '--progress',
+                    '--no-warnings',
                     url
                 ]
             else:
                 # For video downloads
                 quality_num = quality.replace('p', '')
                 quality_filter = f"best[height<={quality_num}][ext=mp4]/best[height<={quality_num}]/best[ext=mp4]/best"
-                output_template = os.path.join(self.download_folder, '%(title)s.%(ext)s')
                 cmd = [
                     'yt-dlp',
                     '--newline',
                     '--no-playlist',
                     '-o', output_template,
                     '-f', quality_filter,
-                    '--ignore-errors',
                     '--merge-output-format', 'mp4',
+                    '--progress',
+                    '--no-warnings',
                     url
                 ]
             
@@ -466,13 +479,35 @@ class DownloadManager:
                             except (ValueError, IndexError) as e:
                                 logging.debug(f"Error parsing progress: {e}")
                         
-                        # Extract filename
-                        elif 'Destination:' in line:
+                        # Extract filename from various yt-dlp output patterns
+                        elif any(pattern in line for pattern in ['Destination:', '[download]', 'Merging formats into']):
                             try:
-                                filename = line.split('Destination:')[1].strip()
-                                self.downloads[download_id]['filename'] = os.path.basename(filename)
-                                logging.info(f"Download {download_id} filename: {filename}")
-                            except IndexError:
+                                if 'Destination:' in line:
+                                    filename = line.split('Destination:')[1].strip()
+                                    filename = filename.strip('"\'')
+                                    self.downloads[download_id]['filename'] = os.path.basename(filename)
+                                    logging.info(f"Download {download_id} destination: {filename}")
+                                elif 'Merging formats into' in line:
+                                    # Extract filename from merge output
+                                    filename = line.split('into "')[1].split('"')[0] if 'into "' in line else None
+                                    if filename:
+                                        self.downloads[download_id]['filename'] = os.path.basename(filename)
+                                        logging.info(f"Download {download_id} merged file: {filename}")
+                                elif '[download] 100%' in line and 'of' in line:
+                                    # Extract filename from completion message
+                                    parts = line.split('of ')
+                                    if len(parts) > 1:
+                                        size_and_file = parts[1].strip()
+                                        # Look for file path after size
+                                        if 'in' in size_and_file:
+                                            file_part = size_and_file.split('in')[0].strip()
+                                            # Extract just the filename part
+                                            if os.path.sep in file_part:
+                                                filename = os.path.basename(file_part)
+                                                self.downloads[download_id]['filename'] = filename
+                                                logging.info(f"Download {download_id} completed file: {filename}")
+                            except (IndexError, AttributeError) as e:
+                                logging.debug(f"Error parsing filename from line: {line}, error: {e}")
                                 pass
                         
                         # Check if download completed
@@ -509,22 +544,18 @@ class DownloadManager:
             if return_code == 0:
                 # Verify the download actually completed by checking for output files
                 download_completed = False
-                if self.downloads[download_id].get('filename'):
-                    expected_file = os.path.join(self.download_folder, self.downloads[download_id]['filename'])
-                    if os.path.exists(expected_file) and os.path.getsize(expected_file) > 0:
-                        download_completed = True
-                        logging.info(f"Download {download_id} file verified: {expected_file}")
-                    else:
-                        # Check for any new files in download folder
-                        for file in os.listdir(self.download_folder):
-                            if not file.endswith('.part') and os.path.getsize(os.path.join(self.download_folder, file)) > 0:
-                                # Check if file was created during this download
-                                file_path = os.path.join(self.download_folder, file)
-                                if os.path.getctime(file_path) > self.downloads[download_id].get('start_time', 0):
-                                    download_completed = True
-                                    self.downloads[download_id]['filename'] = file
-                                    logging.info(f"Download {download_id} found output file: {file}")
-                                    break
+                # Check for any files created during this download period
+                download_start_time = self.downloads[download_id].get('start_time', 0)
+                for file in os.listdir(self.download_folder):
+                    if not file.endswith('.part'):
+                        file_path = os.path.join(self.download_folder, file)
+                        if (os.path.exists(file_path) and 
+                            os.path.getsize(file_path) > 0 and 
+                            os.path.getctime(file_path) >= download_start_time - 5):  # 5 second buffer
+                            download_completed = True
+                            self.downloads[download_id]['filename'] = file
+                            logging.info(f"Download {download_id} found output file: {file}")
+                            break
                 
                 if download_completed:
                     self.downloads[download_id]['status'] = 'completed'
@@ -567,6 +598,66 @@ class DownloadManager:
             downloads_copy[download_id].pop('future', None)
         
         return downloads_copy
+    
+    def pause_download(self, download_id: str) -> bool:
+        """Pause a specific download"""
+        if download_id in self.downloads:
+            download = self.downloads[download_id]
+            
+            if download['status'] == 'downloading':
+                # Pause the process by sending SIGSTOP
+                if 'process' in download and download['process']:
+                    try:
+                        import signal
+                        download['process'].send_signal(signal.SIGSTOP)
+                        download['status'] = 'paused'
+                        logging.info(f"Download {download_id} paused")
+                        return True
+                    except Exception as e:
+                        logging.error(f"Error pausing download: {str(e)}")
+        
+        return False
+    
+    def resume_download(self, download_id: str) -> bool:
+        """Resume a paused download"""
+        if download_id in self.downloads:
+            download = self.downloads[download_id]
+            
+            if download['status'] == 'paused':
+                # Resume the process by sending SIGCONT
+                if 'process' in download and download['process']:
+                    try:
+                        import signal
+                        download['process'].send_signal(signal.SIGCONT)
+                        download['status'] = 'downloading'
+                        logging.info(f"Download {download_id} resumed")
+                        return True
+                    except Exception as e:
+                        logging.error(f"Error resuming download: {str(e)}")
+        
+        return False
+    
+    def pause_all_downloads(self) -> bool:
+        """Pause all active downloads"""
+        paused_count = 0
+        for download_id, download in self.downloads.items():
+            if download['status'] == 'downloading':
+                if self.pause_download(download_id):
+                    paused_count += 1
+        
+        logging.info(f"Paused {paused_count} downloads")
+        return paused_count > 0
+    
+    def resume_all_downloads(self) -> bool:
+        """Resume all paused downloads"""
+        resumed_count = 0
+        for download_id, download in self.downloads.items():
+            if download['status'] == 'paused':
+                if self.resume_download(download_id):
+                    resumed_count += 1
+        
+        logging.info(f"Resumed {resumed_count} downloads")
+        return resumed_count > 0
     
     def cancel_download(self, download_id: str) -> bool:
         """Cancel a specific download"""
