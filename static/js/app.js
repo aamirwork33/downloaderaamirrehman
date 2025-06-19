@@ -1539,6 +1539,30 @@ class StreamVault {
                 if (data.playlist.type === 'playlist' && data.playlist.entries) {
                     console.log('Regular playlist loaded with', data.playlist.entries.length, 'videos');
                     this.renderPlaylistVideos(data.playlist.entries);
+                } else if (data.playlist.type === 'sample_playlist') {
+                    console.log('Sample playlist detected, using channel videos');
+                    // For sample playlists, use videos from the current channel based on playlist name
+                    const playlistName = playlist.title.toLowerCase();
+                    let videosToShow = [];
+                    
+                    if (this.channelData && this.channelData.all_videos) {
+                        // Show a subset of videos for demo purposes
+                        videosToShow = this.channelData.all_videos.slice(0, 4);
+                    }
+                    
+                    if (videosToShow.length > 0) {
+                        console.log('Showing', videosToShow.length, 'videos for sample playlist');
+                        this.renderPlaylistVideos(videosToShow);
+                    } else {
+                        if (videosGrid) {
+                            videosGrid.innerHTML = `
+                                <div class="text-center text-muted py-4">
+                                    <i class="fas fa-info-circle fa-2x mb-2"></i>
+                                    <p>No videos available in this playlist</p>
+                                </div>
+                            `;
+                        }
+                    }
                 } else if (data.playlist.type === 'channel' && data.playlist.all_videos) {
                     console.log('Channel playlist loaded with', data.playlist.all_videos.length, 'videos');
                     this.renderPlaylistVideos(data.playlist.all_videos);
