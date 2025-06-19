@@ -386,13 +386,19 @@ class DownloadManager:
                                         thumbnail = thumb['url']
                                         break
                             
+                            # Ensure we have a proper YouTube URL
+                            video_id = entry.get('id', '')
+                            webpage_url = entry.get('webpage_url', '')
+                            if not webpage_url and video_id:
+                                webpage_url = f"https://www.youtube.com/watch?v={video_id}"
+                            
                             entries.append({
-                                'id': entry.get('id', ''),
+                                'id': video_id,
                                 'title': entry.get('title', 'Unknown'),
-                                'url': entry.get('webpage_url', entry.get('url', '')),
+                                'url': webpage_url,
                                 'duration': entry.get('duration', 0),
                                 'uploader': entry.get('uploader', ''),
-                                'webpage_url': entry.get('webpage_url', ''),
+                                'webpage_url': webpage_url,
                                 'view_count': entry.get('view_count', 0),
                                 'upload_date': entry.get('upload_date', ''),
                                 'thumbnail': thumbnail or entry.get('thumbnail', ''),

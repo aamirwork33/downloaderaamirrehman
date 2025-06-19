@@ -755,19 +755,42 @@ class StreamVault {
         
         // Get URLs of selected videos
         const selectedUrls = [];
-        const allVideos = [...this.channelData.all_videos, ...this.channelData.shorts];
+        let allVideos = [];
+        
+        // Check if we're in playlist view or main channel view
+        const playlistDetail = document.getElementById('playlistDetail');
+        
+        if (playlistDetail && !playlistDetail.classList.contains('d-none')) {
+            // We're in playlist view - use current playlist videos
+            allVideos = this.filteredVideos || [];
+        } else {
+            // We're in main channel view - use all channel videos
+            allVideos = [...this.channelData.all_videos, ...this.channelData.shorts];
+        }
         
         for (const videoId of this.selectedVideos) {
             const video = allVideos.find(v => v.id === videoId);
-            if (video && video.url) {
-                selectedUrls.push(video.url);
+            if (video) {
+                // Try multiple URL formats to ensure we have a valid URL
+                let videoUrl = video.url || video.webpage_url;
+                if (!videoUrl && video.id) {
+                    // Construct YouTube URL from video ID
+                    videoUrl = `https://www.youtube.com/watch?v=${video.id}`;
+                }
+                if (videoUrl) {
+                    selectedUrls.push(videoUrl);
+                }
             }
         }
         
         if (selectedUrls.length === 0) {
-            this.showToast('No valid URLs found for selected videos', 'error');
+            console.error('Selected video IDs:', Array.from(this.selectedVideos));
+            console.error('Available videos:', allVideos);
+            this.showToast('No valid URLs found for selected videos. Please try selecting videos again.', 'error');
             return;
         }
+        
+        console.log('Selected URLs for download:', selectedUrls);
         
         this.showLoadingModal('Starting downloads...');
         
