@@ -669,6 +669,14 @@ class StreamVault {
                 this.updateSelectionSummary();
                 this.renderPlaylistVideos(this.filteredVideos); // Re-render to show selections
             }
+        } else if (playlistsList && !playlistsList.classList.contains('d-none') && this.currentTab === 'playlists') {
+            // We're in playlists tab - select all playlists
+            const playlists = this.channelData?.playlists || [];
+            playlists.forEach(playlist => {
+                this.selectedPlaylists.add(playlist.id);
+            });
+            this.renderPlaylistsGrid();
+            this.updateSelectionSummary();
         } else {
             // We're in main channel view - select all videos in current tab
             this.filteredVideos.forEach(video => {
@@ -682,6 +690,7 @@ class StreamVault {
     unselectAllVideos() {
         // Check if we're in playlist detail view
         const playlistDetail = document.getElementById('playlistDetail');
+        const playlistsList = document.getElementById('playlistsList');
         
         if (playlistDetail && !playlistDetail.classList.contains('d-none')) {
             // We're viewing playlist videos - clear selections and re-render
@@ -690,6 +699,11 @@ class StreamVault {
             if (this.filteredVideos && this.filteredVideos.length > 0) {
                 this.renderPlaylistVideos(this.filteredVideos); // Re-render to show cleared selections
             }
+        } else if (playlistsList && !playlistsList.classList.contains('d-none') && this.currentTab === 'playlists') {
+            // We're in playlists tab - clear playlist selections
+            this.selectedPlaylists.clear();
+            this.renderPlaylistsGrid();
+            this.updateSelectionSummary();
         } else {
             // We're in main channel view
             this.selectedVideos.clear();
