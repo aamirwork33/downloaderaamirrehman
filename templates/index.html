@@ -380,7 +380,14 @@
                             <span class="text-muted ms-2">•</span>
                             <span id="estimatedSize" class="text-muted ms-2">0 MB estimated</span>
                         </div>
-                        <div class="d-flex gap-3">
+                        <div class="d-flex gap-3 align-items-center">
+                            <div class="folder-selection d-flex align-items-center">
+                                <input type="file" id="folderInput" webkitdirectory directory style="display: none;">
+                                <button class="btn btn-outline-info btn-sm" id="selectFolderBtn">
+                                    <i class="fas fa-folder-open me-2"></i>Select Folder
+                                </button>
+                                <span class="text-muted ms-2" id="selectedFolderPath">No folder selected</span>
+                            </div>
                             <div class="download-options d-flex gap-2">
                                 <select class="form-select form-select-sm" id="modalFormatSelect">
                                     <option value="mp4">MP4</option>

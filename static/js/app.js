@@ -8,6 +8,7 @@ class StreamVault {
         this.selectedVideos = new Set();
         this.currentTab = 'all-videos';
         this.filteredVideos = [];
+        this.selectedFolderPath = null;
         
         this.initializeEventListeners();
         this.startProgressPolling();
@@ -103,6 +104,15 @@ class StreamVault {
         // Format change for modal
         document.getElementById('modalFormatSelect').addEventListener('change', (e) => {
             this.updateEstimatedSize();
+        });
+        
+        // Folder selection
+        document.getElementById('selectFolderBtn').addEventListener('click', () => {
+            this.selectDownloadFolder();
+        });
+        
+        document.getElementById('folderInput').addEventListener('change', (e) => {
+            this.handleFolderSelection(e);
         });
     }
     
@@ -319,9 +329,10 @@ class StreamVault {
     showChannelAnalyzerModal(loading = false) {
         const modal = new bootstrap.Modal(document.getElementById('channelAnalyzerModal'));
         
-        // Reset selections
+        // Reset selections and folder selection
         this.selectedVideos.clear();
         this.currentTab = 'all-videos';
+        this.resetFolderSelection();
         
         if (loading) {
             // Show loading skeleton
@@ -1268,6 +1279,54 @@ class StreamVault {
         toastElement.addEventListener('hidden.bs.toast', () => {
             toastElement.remove();
         });
+    }
+    
+    selectDownloadFolder() {
+        // Trigger the hidden file input to open folder selection dialog
+        document.getElementById('folderInput').click();
+    }
+    
+    handleFolderSelection(event) {
+        const files = event.target.files;
+        if (files.length > 0) {
+            // Get the folder path from the first file
+            const folderPath = files[0].webkitRelativePath.split('/')[0];
+            
+            // Update the UI to show selected folder
+            const folderPathElement = document.getElementById('selectedFolderPath');
+            folderPathElement.textContent = folderPath;
+            folderPathElement.classList.remove('text-muted');
+            folderPathElement.classList.add('text-success');
+            
+            // Store the selected folder path
+            this.selectedFolderPath = folderPath;
+            
+            // Show success message
+            this.showToast(`Folder "${folderPath}" selected for downloads`, 'success');
+            
+            // Update button text to show folder is selected
+            const selectBtn = document.getElementById('selectFolderBtn');
+            selectBtn.innerHTML = '<i class="fas fa-check-circle me-2"></i>Folder Selected';
+            selectBtn.classList.remove('btn-outline-info');
+            selectBtn.classList.add('btn-outline-success');
+        }
+    }
+    
+    resetFolderSelection() {
+        // Reset folder selection when modal closes or resets
+        this.selectedFolderPath = null;
+        const folderPathElement = document.getElementById('selectedFolderPath');
+        folderPathElement.textContent = 'No folder selected';
+        folderPathElement.classList.remove('text-success');
+        folderPathElement.classList.add('text-muted');
+        
+        const selectBtn = document.getElementById('selectFolderBtn');
+        selectBtn.innerHTML = '<i class="fas fa-folder-open me-2"></i>Select Folder';
+        selectBtn.classList.remove('btn-outline-success');
+        selectBtn.classList.add('btn-outline-info');
+        
+        // Clear the file input
+        document.getElementById('folderInput').value = '';
     }
 }
 

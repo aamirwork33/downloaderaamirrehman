@@ -848,6 +848,15 @@ body {
         width: 100%;
         gap: 1rem;
     }
+    
+    .folder-selection {
+        justify-content: center;
+        text-align: center;
+    }
+    
+    #selectedFolderPath {
+        max-width: 150px;
+    }
 }
 
 /* Loading States */
@@ -962,4 +971,37 @@ body {
     background: rgba(255, 255, 255, 0.1);
     backdrop-filter: blur(10px);
     border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Folder Selection Styles */
+.folder-selection {
+    border: 1px solid rgba(102, 126, 234, 0.2);
+    border-radius: 10px;
+    padding: 8px 12px;
+    background: rgba(102, 126, 234, 0.05);
+    transition: all 0.3s ease;
+}
+
+.folder-selection:hover {
+    background: rgba(102, 126, 234, 0.1);
+    border-color: rgba(102, 126, 234, 0.3);
+}
+
+#selectedFolderPath {
+    font-size: 0.85rem;
+    font-weight: 500;
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+#selectFolderBtn {
+    transition: all 0.3s ease;
+    font-weight: 500;
+}
+
+#selectFolderBtn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(102, 126, 234, 0.2);
 }
