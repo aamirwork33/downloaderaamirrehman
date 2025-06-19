@@ -883,8 +883,30 @@ class StreamVault {
     }
     
     addDownloadToQueue(downloadId, downloadInfo) {
-        this.downloads.set(downloadId, downloadInfo);
+        // Enhance download info with additional metadata
+        const enhancedInfo = {
+            ...downloadInfo,
+            thumbnail: downloadInfo.thumbnail || this.getVideoThumbnailFromUrl(downloadInfo.url),
+            addedTime: new Date().toISOString()
+        };
+        this.downloads.set(downloadId, enhancedInfo);
         this.updateQueueDisplay();
+    }
+    
+    getVideoThumbnailFromUrl(url) {
+        // Extract video ID from YouTube URL and generate thumbnail
+        if (url.includes('youtube.com') || url.includes('youtu.be')) {
+            let videoId = '';
+            if (url.includes('youtube.com/watch?v=')) {
+                videoId = url.split('v=')[1].split('&')[0];
+            } else if (url.includes('youtu.be/')) {
+                videoId = url.split('youtu.be/')[1].split('?')[0];
+            }
+            if (videoId) {
+                return `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
+            }
+        }
+        return 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjY4IiB2aWV3Qm94PSIwIDAgMTIwIDY4IiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8cmVjdCB3aWR0aD0iMTIwIiBoZWlnaHQ9IjY4IiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik00OCAzNEw2MCAyN1Y0MUw0OCAzNFoiIGZpbGw9IiM5Q0EzQUYiLz4KPC9zdmc+';
     }
     
     updateQueueDisplay() {
@@ -892,7 +914,7 @@ class StreamVault {
         
         if (this.downloads.size === 0) {
             queueBody.innerHTML = `
-                <div class="text-center text-muted">
+                <div class="text-center text-muted py-4">
                     <i class="fas fa-inbox fa-2x mb-2"></i>
                     <p>No downloads in queue</p>
                 </div>
@@ -905,45 +927,102 @@ class StreamVault {
         for (const [downloadId, download] of this.downloads) {
             const statusClass = `status-${download.status}`;
             const progressWidth = download.progress || 0;
+            const thumbnail = download.thumbnail || this.getVideoThumbnailFromUrl(download.url);
+            const safeTitle = this.escapeHtml(download.title || 'Unknown Video');
             
             queueHtml += `
-                <div class="download-item ${download.status}" id="download-${downloadId}">
-                    <div class="d-flex justify-content-between align-items-start mb-2">
-                        <div class="flex-grow-1">
-                            <h6 class="mb-1">${this.truncateText(download.title, 60)}</h6>
-                            <small class="text-muted">${download.format.toUpperCase()} • ${download.quality}</small>
+                <div class="download-queue-item ${download.status}" id="download-${downloadId}">
+                    <div class="d-flex align-items-start">
+                        <!-- Thumbnail -->
+                        <div class="download-thumbnail-container me-3">
+                            <img src="${thumbnail}" 
+                                 alt="${safeTitle}" 
+                                 class="download-thumbnail"
+                                 onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iNDUiIHZpZXdCb3g9IjAgMCA4MCA0NSIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjgwIiBoZWlnaHQ9IjQ1IiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0zMiAyMi41TDQwIDFWMzRMMzIgMjIuNVoiIGZpbGw9IiM5Q0EzQUYiLz4KPC9zdmc+';">
+                            <div class="download-status-overlay">
+                                ${download.status === 'downloading' ? '<i class="fas fa-download"></i>' : ''}
+                                ${download.status === 'completed' ? '<i class="fas fa-check"></i>' : ''}
+                                ${download.status === 'failed' ? '<i class="fas fa-times"></i>' : ''}
+                                ${download.status === 'starting' ? '<i class="fas fa-spinner fa-spin"></i>' : ''}
+                            </div>
                         </div>
-                        <div class="d-flex align-items-center">
-                            <span class="status-badge ${statusClass} me-2">${download.status}</span>
-                            ${download.status === 'downloading' || download.status === 'starting' ? 
-                                `<button class="btn btn-sm btn-outline-danger" onclick="streamVault.cancelDownload('${downloadId}')">
-                                    <i class="fas fa-times"></i>
-                                </button>` : ''
-                            }
+                        
+                        <!-- Content -->
+                        <div class="flex-grow-1 min-w-0">
+                            <!-- Title and metadata -->
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <div class="flex-grow-1 min-w-0">
+                                    <h6 class="download-title mb-1" title="${safeTitle}">${this.truncateText(safeTitle, 50)}</h6>
+                                    <div class="download-meta">
+                                        <span class="format-badge">${download.format.toUpperCase()}</span>
+                                        <span class="quality-badge">${download.quality}</span>
+                                        ${download.filename ? `<span class="filename-info"><i class="fas fa-file me-1"></i>${this.truncateText(download.filename, 30)}</span>` : ''}
+                                    </div>
+                                </div>
+                                <div class="d-flex align-items-center ms-3">
+                                    <span class="status-badge ${statusClass}">${this.getStatusText(download.status)}</span>
+                                    ${download.status === 'downloading' || download.status === 'starting' ? 
+                                        `<button class="btn btn-sm btn-outline-danger ms-2" onclick="streamVault.cancelDownload('${downloadId}')" title="Cancel Download">
+                                            <i class="fas fa-times"></i>
+                                        </button>` : ''
+                                    }
+                                </div>
+                            </div>
+                            
+                            <!-- Progress bar for active downloads -->
+                            ${download.status === 'downloading' || download.status === 'starting' ? `
+                                <div class="progress mb-2" style="height: 6px;">
+                                    <div class="progress-bar progress-bar-striped ${download.status === 'downloading' ? 'progress-bar-animated' : ''}" 
+                                         role="progressbar" 
+                                         style="width: ${progressWidth}%" 
+                                         aria-valuenow="${progressWidth}" 
+                                         aria-valuemin="0" 
+                                         aria-valuemax="100"></div>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center small text-muted">
+                                    <span class="progress-text">${progressWidth.toFixed(1)}%</span>
+                                    <span class="download-stats">
+                                        ${download.speed ? `<i class="fas fa-tachometer-alt me-1"></i>${download.speed}` : ''}
+                                        ${download.eta ? `<span class="ms-2"><i class="fas fa-clock me-1"></i>ETA: ${download.eta}</span>` : ''}
+                                    </span>
+                                </div>
+                            ` : ''}
+                            
+                            <!-- Error message -->
+                            ${download.error ? `
+                                <div class="alert alert-danger alert-sm mt-2 mb-0 p-2">
+                                    <i class="fas fa-exclamation-triangle me-2"></i>
+                                    <small>${download.error}</small>
+                                </div>
+                            ` : ''}
+                            
+                            <!-- Completion info -->
+                            ${download.status === 'completed' ? `
+                                <div class="completion-info mt-2">
+                                    <small class="text-success">
+                                        <i class="fas fa-check-circle me-1"></i>
+                                        Download completed successfully
+                                    </small>
+                                </div>
+                            ` : ''}
                         </div>
                     </div>
-                    
-                    ${download.status === 'downloading' || download.status === 'starting' ? `
-                        <div class="progress mb-2">
-                            <div class="progress-bar" role="progressbar" style="width: ${progressWidth}%" 
-                                 aria-valuenow="${progressWidth}" aria-valuemin="0" aria-valuemax="100"></div>
-                        </div>
-                        <div class="d-flex justify-content-between small text-muted">
-                            <span>${progressWidth.toFixed(1)}%</span>
-                            <span>${download.speed} ${download.eta ? '• ETA: ' + download.eta : ''}</span>
-                        </div>
-                    ` : ''}
-                    
-                    ${download.error ? `
-                        <div class="alert alert-danger alert-sm mt-2 mb-0">
-                            <i class="fas fa-exclamation-triangle me-2"></i>${download.error}
-                        </div>
-                    ` : ''}
                 </div>
             `;
         }
         
         queueBody.innerHTML = queueHtml;
+    }
+    
+    getStatusText(status) {
+        const statusMap = {
+            'starting': 'Starting',
+            'downloading': 'Downloading',
+            'completed': 'Completed',
+            'failed': 'Failed',
+            'cancelled': 'Cancelled'
+        };
+        return statusMap[status] || status;
     }
     
     truncateText(text, maxLength) {
