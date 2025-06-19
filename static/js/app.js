@@ -1630,10 +1630,20 @@ class StreamVault {
         console.log('Setting grid HTML with', videos.length, 'videos');
         grid.innerHTML = videosHtml;
         
-        // Force re-render by triggering layout
-        grid.style.display = 'none';
-        grid.offsetHeight; // Force reflow
+        // Ensure grid is visible and styled correctly
         grid.style.display = 'flex';
+        grid.style.flexDirection = 'column';
+        grid.style.gap = '8px';
+        grid.style.padding = '12px 0';
+        grid.style.minHeight = '200px';
+        
+        // Force a layout recalculation
+        setTimeout(() => {
+            grid.style.opacity = '0.99';
+            setTimeout(() => {
+                grid.style.opacity = '1';
+            }, 10);
+        }, 10);
         
         // Update filtered videos and selection summary
         this.filteredVideos = videos;
