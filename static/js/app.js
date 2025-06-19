@@ -376,27 +376,41 @@ class StreamVault {
         
         // Show loading content in video grids
         this.showLoadingInGrids();
+        
+        // Reset playlist view to list
+        const playlistDetail = document.getElementById('playlistDetail');
+        const playlistsList = document.getElementById('playlistsList');
+        if (playlistDetail) playlistDetail.classList.add('d-none');
+        if (playlistsList) playlistsList.classList.remove('d-none');
     }
     
     showLoadingInGrids() {
-        const grids = ['allVideosGrid', 'shortsGrid', 'playlistsGrid'];
+        const grids = ['allVideosGrid', 'shortsGrid', 'playlistsList'];
         
         grids.forEach(gridId => {
             const grid = document.getElementById(gridId);
-            grid.innerHTML = `
-                <div class="video-grid loading">
-                    <div class="loading-spinner"></div>
-                    <p class="mt-3 text-muted">Loading videos...</p>
-                </div>
-            `;
+            if (grid) {
+                grid.innerHTML = `
+                    <div class="video-grid loading">
+                        <div class="loading-spinner"></div>
+                        <p class="mt-3 text-muted">Loading videos...</p>
+                    </div>
+                `;
+            }
         });
         
-        // Disable controls during loading
-        document.getElementById('selectAllBtn').disabled = true;
-        document.getElementById('unselectAllBtn').disabled = true;
-        document.getElementById('downloadSelectedBtn').disabled = true;
-        document.getElementById('sortSelect').disabled = true;
-        document.getElementById('searchInput').disabled = true;
+        // Disable controls during loading (check if elements exist)
+        const selectAllBtn = document.getElementById('selectAllBtn');
+        const unselectAllBtn = document.getElementById('unselectAllBtn');
+        const downloadSelectedBtn = document.getElementById('downloadSelectedBtn');
+        const sortSelect = document.getElementById('sortSelect');
+        const searchInput = document.getElementById('searchInput');
+        
+        if (selectAllBtn) selectAllBtn.disabled = true;
+        if (unselectAllBtn) unselectAllBtn.disabled = true;
+        if (downloadSelectedBtn) downloadSelectedBtn.disabled = true;
+        if (sortSelect) sortSelect.disabled = true;
+        if (searchInput) searchInput.disabled = true;
     }
     
     populateChannelData() {
@@ -434,27 +448,18 @@ class StreamVault {
     }
     
     updateVideoDisplay() {
-        let videos = [];
-        let gridId = '';
-        
-        switch(this.currentTab) {
-            case 'all-videos':
-                videos = this.channelData.all_videos;
-                gridId = 'allVideosGrid';
-                break;
-            case 'shorts':
-                videos = this.channelData.shorts;
-                gridId = 'shortsGrid';
-                break;
-            case 'playlists':
-                videos = this.channelData.playlists;
-                gridId = 'playlistsGrid';
-                break;
+        if (this.currentTab === 'all-videos') {
+            this.filteredVideos = this.channelData?.all_videos || [];
+            this.applyCurrentFilters();
+            this.renderVideoGrid('allVideosGrid');
+        } else if (this.currentTab === 'shorts') {
+            this.filteredVideos = this.channelData?.shorts || [];
+            this.applyCurrentFilters();
+            this.renderVideoGrid('shortsGrid');
+        } else if (this.currentTab === 'playlists') {
+            this.renderPlaylistsGrid();
         }
         
-        this.filteredVideos = videos;
-        this.applyCurrentFilters();
-        this.renderVideoGrid(gridId);
         this.updateSelectionSummary();
     }
     
