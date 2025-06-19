@@ -74,7 +74,10 @@ class StreamVault {
         // Tab switching
         document.querySelectorAll('#channelTabs .nav-link').forEach(tab => {
             tab.addEventListener('click', (e) => {
-                this.currentTab = e.target.id.replace('-tab', '');
+                const newTab = e.target.id.replace('-tab', '');
+                console.log('Switching to tab:', newTab);
+                this.currentTab = newTab;
+                this.selectedVideos.clear(); // Clear selections when switching tabs
                 this.updateVideoDisplay();
             });
         });
@@ -298,6 +301,10 @@ class StreamVault {
                 
                 if (data.success && data.playlist.type === 'channel') {
                     this.channelData = data.playlist;
+                    console.log('Channel data received:', this.channelData);
+                    console.log('Videos:', this.channelData.all_videos?.length || 0);
+                    console.log('Shorts:', this.channelData.shorts?.length || 0); 
+                    console.log('Playlists:', this.channelData.playlists?.length || 0);
                     this.populateChannelData();
                     this.showToast('Channel analyzed successfully!', 'success');
                 } else {
@@ -374,6 +381,9 @@ class StreamVault {
         document.getElementById('shortsCount').textContent = '...';
         document.getElementById('playlistsCount').textContent = '...';
         
+        // Reset to all-videos tab
+        this.currentTab = 'all-videos';
+        
         // Show loading content in video grids
         this.showLoadingInGrids();
         
@@ -385,21 +395,39 @@ class StreamVault {
     }
     
     showLoadingInGrids() {
-        const grids = ['allVideosGrid', 'shortsGrid', 'playlistsList'];
+        // Clear all grids with loading states
+        const allVideosGrid = document.getElementById('allVideosGrid');
+        const shortsGrid = document.getElementById('shortsGrid');
+        const playlistsList = document.getElementById('playlistsList');
         
-        grids.forEach(gridId => {
-            const grid = document.getElementById(gridId);
-            if (grid) {
-                grid.innerHTML = `
-                    <div class="video-grid loading">
-                        <div class="loading-spinner"></div>
-                        <p class="mt-3 text-muted">Loading videos...</p>
-                    </div>
-                `;
-            }
-        });
+        if (allVideosGrid) {
+            allVideosGrid.innerHTML = `
+                <div class="video-grid loading">
+                    <div class="loading-spinner"></div>
+                    <p class="mt-3 text-muted">Loading videos...</p>
+                </div>
+            `;
+        }
         
-        // Disable controls during loading (check if elements exist)
+        if (shortsGrid) {
+            shortsGrid.innerHTML = `
+                <div class="video-grid loading">
+                    <div class="loading-spinner"></div>
+                    <p class="mt-3 text-muted">Loading shorts...</p>
+                </div>
+            `;
+        }
+        
+        if (playlistsList) {
+            playlistsList.innerHTML = `
+                <div class="video-grid loading">
+                    <div class="loading-spinner"></div>
+                    <p class="mt-3 text-muted">Loading playlists...</p>
+                </div>
+            `;
+        }
+        
+        // Disable controls during loading
         const selectAllBtn = document.getElementById('selectAllBtn');
         const unselectAllBtn = document.getElementById('unselectAllBtn');
         const downloadSelectedBtn = document.getElementById('downloadSelectedBtn');
@@ -416,20 +444,28 @@ class StreamVault {
     populateChannelData() {
         if (!this.channelData) return;
         
+        console.log('Channel data structure:', this.channelData);
+        
         // Populate channel header
         this.populateChannelHeader();
         
         // Update counts
         this.updateTabCounts();
         
-        // Load initial videos
+        // Load initial videos - force all-videos tab
+        this.currentTab = 'all-videos';
         this.updateVideoDisplay();
         
         // Enable controls
-        document.getElementById('selectAllBtn').disabled = false;
-        document.getElementById('unselectAllBtn').disabled = false;
-        document.getElementById('sortSelect').disabled = false;
-        document.getElementById('searchInput').disabled = false;
+        const selectAllBtn = document.getElementById('selectAllBtn');
+        const unselectAllBtn = document.getElementById('unselectAllBtn');
+        const sortSelect = document.getElementById('sortSelect');
+        const searchInput = document.getElementById('searchInput');
+        
+        if (selectAllBtn) selectAllBtn.disabled = false;
+        if (unselectAllBtn) unselectAllBtn.disabled = false;
+        if (sortSelect) sortSelect.disabled = false;
+        if (searchInput) searchInput.disabled = false;
     }
     
     populateChannelHeader() {
@@ -448,18 +484,30 @@ class StreamVault {
     }
     
     updateVideoDisplay() {
+        console.log('Updating display for tab:', this.currentTab);
+        console.log('Available data:', {
+            all_videos: this.channelData?.all_videos?.length || 0,
+            shorts: this.channelData?.shorts?.length || 0,
+            playlists: this.channelData?.playlists?.length || 0
+        });
+        
         if (this.currentTab === 'all-videos') {
             this.filteredVideos = this.channelData?.all_videos || [];
+            console.log('All videos to display:', this.filteredVideos.length);
             this.applyCurrentFilters();
             this.renderVideoGrid('allVideosGrid');
         } else if (this.currentTab === 'shorts') {
             this.filteredVideos = this.channelData?.shorts || [];
+            console.log('Shorts to display:', this.filteredVideos.length);
             this.applyCurrentFilters();
             this.renderVideoGrid('shortsGrid');
         } else if (this.currentTab === 'playlists') {
+            console.log('Showing playlists grid');
             // Show playlists list, not videos
             this.showPlaylistsList();
             this.renderPlaylistsGrid();
+            // Clear filtered videos for playlists tab
+            this.filteredVideos = [];
         }
         
         this.updateSelectionSummary();
@@ -501,10 +549,7 @@ class StreamVault {
             return;
         }
         
-        // Don't render playlists in video grids
-        if (gridId === 'playlistsList') {
-            return;
-        }
+        console.log(`Rendering ${this.filteredVideos.length} videos in grid: ${gridId}`);
         
         if (this.filteredVideos.length === 0) {
             let emptyMessage = 'No videos found';
@@ -1380,10 +1425,14 @@ class StreamVault {
     renderPlaylistsGrid() {
         const grid = document.getElementById('playlistsList');
         
-        if (!grid) return;
+        if (!grid) {
+            console.error('Playlists grid not found');
+            return;
+        }
         
         // Filter to show only playlists
         const playlists = this.channelData?.playlists || [];
+        console.log('Rendering playlists:', playlists.length);
         
         if (playlists.length === 0) {
             grid.innerHTML = `
