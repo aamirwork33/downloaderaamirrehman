@@ -457,6 +457,8 @@ class StreamVault {
             this.applyCurrentFilters();
             this.renderVideoGrid('shortsGrid');
         } else if (this.currentTab === 'playlists') {
+            // Show playlists list, not videos
+            this.showPlaylistsList();
             this.renderPlaylistsGrid();
         }
         
@@ -499,11 +501,21 @@ class StreamVault {
             return;
         }
         
+        // Don't render playlists in video grids
+        if (gridId === 'playlistsList') {
+            return;
+        }
+        
         if (this.filteredVideos.length === 0) {
+            let emptyMessage = 'No videos found';
+            if (gridId === 'shortsGrid') {
+                emptyMessage = 'No shorts found';
+            }
+            
             grid.innerHTML = `
                 <div class="text-center text-muted py-4">
                     <i class="fas fa-inbox fa-2x mb-2"></i>
-                    <p>No videos found</p>
+                    <p>${emptyMessage}</p>
                 </div>
             `;
             return;
@@ -1412,30 +1424,46 @@ class StreamVault {
     
     async openPlaylist(playlistId) {
         const playlist = this.channelData?.playlists?.find(p => p.id === playlistId);
-        if (!playlist) return;
+        if (!playlist) {
+            console.error('Playlist not found:', playlistId);
+            return;
+        }
         
         this.currentPlaylist = playlist;
         
-        // Show loading
-        document.getElementById('playlistsList').classList.add('d-none');
-        document.getElementById('playlistDetail').classList.remove('d-none');
+        // Clear previous selections when opening a new playlist
+        this.selectedVideos.clear();
         
-        // Update header
-        document.getElementById('currentPlaylistTitle').textContent = playlist.title;
-        document.getElementById('currentPlaylistMeta').textContent = `${playlist.video_count || 0} videos`;
+        // Show playlist detail view
+        const playlistsList = document.getElementById('playlistsList');
+        const playlistDetail = document.getElementById('playlistDetail');
+        
+        if (playlistsList) playlistsList.classList.add('d-none');
+        if (playlistDetail) playlistDetail.classList.remove('d-none');
+        
+        // Update header information
+        const titleElement = document.getElementById('currentPlaylistTitle');
+        const metaElement = document.getElementById('currentPlaylistMeta');
+        
+        if (titleElement) titleElement.textContent = playlist.title;
+        if (metaElement) metaElement.textContent = `${playlist.video_count || 0} videos`;
         
         // Show loading skeleton for videos
         const videosGrid = document.getElementById('playlistVideosGrid');
-        videosGrid.innerHTML = `
-            <div class="text-center py-4">
-                <div class="loading-spinner"></div>
-                <p class="text-muted mt-2">Loading playlist videos...</p>
-            </div>
-        `;
+        if (videosGrid) {
+            videosGrid.innerHTML = `
+                <div class="text-center py-4">
+                    <div class="loading-spinner"></div>
+                    <p class="text-muted mt-2">Loading playlist videos...</p>
+                </div>
+            `;
+        }
         
         try {
-            // Fetch playlist videos using the playlist URL
+            // Use the proper playlist URL for fetching videos
             const playlistUrl = playlist.webpage_url || playlist.url;
+            console.log('Loading playlist:', playlistUrl);
+            
             const response = await fetch('/api/analyze-playlist', {
                 method: 'POST',
                 headers: {
@@ -1446,25 +1474,33 @@ class StreamVault {
             
             const data = await response.json();
             
-            if (data.success && data.playlist.entries) {
+            if (data.success && data.playlist && data.playlist.entries) {
+                console.log('Playlist loaded with', data.playlist.entries.length, 'videos');
                 this.renderPlaylistVideos(data.playlist.entries);
             } else {
                 throw new Error(data.error || 'Failed to load playlist videos');
             }
         } catch (error) {
             console.error('Playlist loading error:', error);
-            videosGrid.innerHTML = `
-                <div class="text-center text-muted py-4">
-                    <i class="fas fa-exclamation-triangle fa-2x mb-2"></i>
-                    <p>Failed to load playlist videos</p>
-                    <small>${error.message}</small>
-                </div>
-            `;
+            if (videosGrid) {
+                videosGrid.innerHTML = `
+                    <div class="text-center text-muted py-4">
+                        <i class="fas fa-exclamation-triangle fa-2x mb-2"></i>
+                        <p>Failed to load playlist videos</p>
+                        <small>${error.message}</small>
+                    </div>
+                `;
+            }
         }
     }
     
     renderPlaylistVideos(videos) {
         const grid = document.getElementById('playlistVideosGrid');
+        
+        if (!grid) {
+            console.error('Playlist videos grid not found');
+            return;
+        }
         
         if (!videos || videos.length === 0) {
             grid.innerHTML = `
@@ -1492,7 +1528,7 @@ class StreamVault {
                              alt="${safeTitle}" 
                              class="video-thumbnail" 
                              loading="lazy"
-                             onerror="this.src='${this.getDefaultPlaylistThumbnail()}';">
+                             onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjY4IiB2aWV3Qm94PSIwIDAgMTIwIDY4IiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8cmVjdCB3aWR0aD0iMTIwIiBoZWlnaHQ9IjY4IiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik00OCAzNEw2MCAyN1Y0MUw0OCAzNFoiIGZpbGw9IiM5Q0EzQUYiLz4KPC9zdmc+';">
                         ${video.duration ? `<span class="video-duration">${this.formatDuration(video.duration)}</span>` : ''}
                     </div>
                     <div class="video-info">
@@ -1508,14 +1544,18 @@ class StreamVault {
         
         grid.innerHTML = videosHtml;
         
-        // Add videos to current filtered list for selection functionality
+        // Update filtered videos and selection summary
         this.filteredVideos = videos;
         this.updateSelectionSummary();
     }
     
     showPlaylistsList() {
-        document.getElementById('playlistDetail').classList.add('d-none');
-        document.getElementById('playlistsList').classList.remove('d-none');
+        const playlistDetail = document.getElementById('playlistDetail');
+        const playlistsList = document.getElementById('playlistsList');
+        
+        if (playlistDetail) playlistDetail.classList.add('d-none');
+        if (playlistsList) playlistsList.classList.remove('d-none');
+        
         this.currentPlaylist = null;
         this.selectedVideos.clear();
         this.updateSelectionSummary();
