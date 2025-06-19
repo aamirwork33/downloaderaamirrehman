@@ -1,7 +1,7 @@
 import os
 import json
 import logging
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, send_from_directory
 from werkzeug.middleware.proxy_fix import ProxyFix
 from download_manager import DownloadManager
 
@@ -211,6 +211,16 @@ def resume_all_downloads():
     except Exception as e:
         logging.error(f"Error resuming all downloads: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/downloads/<path:filename>')
+def download_file(filename):
+    """Serve downloaded files"""
+    try:
+        download_folder = os.path.join(os.getcwd(), 'downloads')
+        return send_from_directory(download_folder, filename, as_attachment=True)
+    except Exception as e:
+        logging.error(f"Error serving file: {str(e)}")
+        return jsonify({'error': 'File not found'}), 404
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

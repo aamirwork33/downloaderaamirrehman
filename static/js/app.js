@@ -486,6 +486,7 @@ class StreamVault {
                 <div class="video-item ${isSelected ? 'selected' : ''}" data-video-id="${video.id}" onclick="streamVault.toggleVideoSelection('${video.id}')">
                     <input type="checkbox" class="form-check-input video-checkbox" 
                            ${isSelected ? 'checked' : ''} 
+                           onchange="streamVault.toggleVideoSelection('${video.id}')" 
                            onclick="event.stopPropagation();">
                     <div class="position-relative">
                         <img src="${thumbnail}" 
@@ -551,8 +552,14 @@ class StreamVault {
         
         // Update visual state
         const videoItem = document.querySelector(`[data-video-id="${videoId}"]`);
+        const checkbox = videoItem?.querySelector('.video-checkbox');
+        
         if (videoItem) {
-            videoItem.classList.toggle('selected', this.selectedVideos.has(videoId));
+            const isSelected = this.selectedVideos.has(videoId);
+            videoItem.classList.toggle('selected', isSelected);
+            if (checkbox) {
+                checkbox.checked = isSelected;
+            }
         }
         
         this.updateSelectionSummary();
@@ -1013,11 +1020,14 @@ class StreamVault {
                             
                             <!-- Completion info -->
                             ${download.status === 'completed' ? `
-                                <div class="completion-info mt-2">
+                                <div class="completion-info mt-2 d-flex justify-content-between align-items-center">
                                     <small class="text-success">
                                         <i class="fas fa-check-circle me-1"></i>
                                         Download completed successfully
                                     </small>
+                                    <button class="btn btn-sm btn-outline-primary" onclick="streamVault.openFileLocation('${downloadId}')" title="Open File Location">
+                                        <i class="fas fa-folder-open me-1"></i>Open Location
+                                    </button>
                                 </div>
                             ` : ''}
                         </div>
@@ -1097,6 +1107,26 @@ class StreamVault {
         }
     }
 
+    openFileLocation(downloadId) {
+        const download = this.downloads.get(downloadId);
+        if (download && download.filename) {
+            // Show info about file location since we can't open folders in web browsers
+            this.showToast(`File saved as: ${download.filename}`, 'info');
+            
+            // Create a temporary download link to access the file
+            const downloadPath = `/downloads/${encodeURIComponent(download.filename)}`;
+            const link = document.createElement('a');
+            link.href = downloadPath;
+            link.download = download.filename;
+            link.style.display = 'none';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        } else {
+            this.showToast('File location not available', 'error');
+        }
+    }
+
     getStatusText(status) {
         const statusMap = {
             'starting': 'Starting',
@@ -1104,7 +1134,9 @@ class StreamVault {
             'paused': 'Paused',
             'completed': 'Completed',
             'failed': 'Failed',
-            'cancelled': 'Cancelled'
+            'cancelled': 'Cancelled',
+            'analyzing': 'Analyzing',
+            'analyzed': 'Ready to Download'
         };
         return statusMap[status] || status;
     }
