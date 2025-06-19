@@ -1672,7 +1672,7 @@ class StreamVault {
                     visibility: visible !important;
                     opacity: 1 !important;
                     background: rgba(255, 255, 255, 0.98) !important;
-                    border: 1px solid rgba(102, 126, 234, 0.3) !important;
+                    border: 1px solid rgba(102, 126, 234, 0.2) !important;
                     border-radius: 8px !important;
                     padding: 12px !important;
                     margin-bottom: 8px !important;
@@ -1680,6 +1680,8 @@ class StreamVault {
                     min-height: 80px !important;
                     position: relative !important;
                     z-index: 10 !important;
+                    transform: none !important;
+                    transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease !important;
                 `;
             });
             
