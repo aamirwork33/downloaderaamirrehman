@@ -656,16 +656,45 @@ class StreamVault {
     }
     
     selectAllVideos() {
-        this.filteredVideos.forEach(video => {
-            this.selectedVideos.add(video.id);
-        });
-        this.updateVideoDisplay();
+        // Check if we're in playlist detail view
+        const playlistDetail = document.getElementById('playlistDetail');
+        const playlistsList = document.getElementById('playlistsList');
+        
+        if (playlistDetail && !playlistDetail.classList.contains('d-none')) {
+            // We're viewing playlist videos - select all videos in current playlist
+            if (this.filteredVideos && this.filteredVideos.length > 0) {
+                this.filteredVideos.forEach(video => {
+                    this.selectedVideos.add(video.id);
+                });
+                this.updateSelectionSummary();
+                this.renderPlaylistVideos(this.filteredVideos); // Re-render to show selections
+            }
+        } else {
+            // We're in main channel view - select all videos in current tab
+            this.filteredVideos.forEach(video => {
+                this.selectedVideos.add(video.id);
+            });
+            this.updateVideoDisplay();
+        }
         this.saveSelectionToStorage();
     }
     
     unselectAllVideos() {
-        this.selectedVideos.clear();
-        this.updateVideoDisplay();
+        // Check if we're in playlist detail view
+        const playlistDetail = document.getElementById('playlistDetail');
+        
+        if (playlistDetail && !playlistDetail.classList.contains('d-none')) {
+            // We're viewing playlist videos - clear selections and re-render
+            this.selectedVideos.clear();
+            this.updateSelectionSummary();
+            if (this.filteredVideos && this.filteredVideos.length > 0) {
+                this.renderPlaylistVideos(this.filteredVideos); // Re-render to show cleared selections
+            }
+        } else {
+            // We're in main channel view
+            this.selectedVideos.clear();
+            this.updateVideoDisplay();
+        }
         this.saveSelectionToStorage();
     }
     
@@ -1693,6 +1722,16 @@ class StreamVault {
         
         // Update filtered videos and selection summary
         this.filteredVideos = videos;
+        this.updateSelectionSummary();
+    }
+    
+    togglePlaylistSelection(playlistId) {
+        if (this.selectedPlaylists.has(playlistId)) {
+            this.selectedPlaylists.delete(playlistId);
+        } else {
+            this.selectedPlaylists.add(playlistId);
+        }
+        this.renderPlaylistsGrid();
         this.updateSelectionSummary();
     }
     
