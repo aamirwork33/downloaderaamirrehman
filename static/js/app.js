@@ -1633,17 +1633,19 @@ class StreamVault {
         
         grid.innerHTML = videosHtml;
         
-        // Force visibility and styling
+        // Force visibility and styling with scrolling
         grid.style.cssText = `
             display: flex !important;
             flex-direction: column !important;
             gap: 8px !important;
             padding: 12px 0 !important;
-            min-height: 200px !important;
+            max-height: 400px !important;
             visibility: visible !important;
             opacity: 1 !important;
             width: 100% !important;
             background: transparent !important;
+            overflow-y: auto !important;
+            overflow-x: hidden !important;
         `;
         
         // Force all video items to be visible with aggressive debugging

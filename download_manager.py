@@ -244,12 +244,29 @@ class DownloadManager:
                                     if entry.get('thumbnails'):
                                         thumbnail_url = entry['thumbnails'][0].get('url', '')
                                     
+                                    # Get actual video count for this playlist
+                                    actual_count = 0
+                                    try:
+                                        count_cmd = [
+                                            'yt-dlp',
+                                            '--dump-json',
+                                            '--no-download',
+                                            '--flat-playlist',
+                                            '--ignore-errors',
+                                            playlist_url
+                                        ]
+                                        count_result = subprocess.run(count_cmd, capture_output=True, text=True, timeout=30)
+                                        if count_result.returncode == 0:
+                                            actual_count = len([line for line in count_result.stdout.strip().split('\n') if line.strip()])
+                                    except:
+                                        actual_count = entry.get('playlist_count', 0)
+                                    
                                     playlists.append({
                                         'id': playlist_id,
                                         'title': entry.get('title', 'Unknown Playlist'),
                                         'url': playlist_url,
                                         'webpage_url': entry.get('webpage_url', playlist_url),
-                                        'video_count': entry.get('playlist_count', 0),
+                                        'video_count': actual_count,
                                         'thumbnail': thumbnail_url,
                                         'updated': entry.get('upload_date', '')
                                     })
