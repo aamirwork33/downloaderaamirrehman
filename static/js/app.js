@@ -8,6 +8,7 @@ class StreamVault {
         this.selectedVideos = new Set();
         this.currentTab = 'all-videos';
         this.filteredVideos = [];
+        this.currentPlaylist = null;
         this.selectedFolderPath = null;
         
         this.initializeEventListeners();
@@ -119,6 +120,14 @@ class StreamVault {
         if (folderInput) {
             folderInput.addEventListener('change', (e) => {
                 this.handleFolderSelection(e);
+            });
+        }
+        
+        // Playlist navigation
+        const backToPlaylistsBtn = document.getElementById('backToPlaylistsBtn');
+        if (backToPlaylistsBtn) {
+            backToPlaylistsBtn.addEventListener('click', () => {
+                this.showPlaylistsList();
             });
         }
     }
@@ -1332,14 +1341,14 @@ class StreamVault {
         
         const folderPathElement = document.getElementById('selectedFolderPath');
         if (folderPathElement) {
-            folderPathElement.textContent = 'No folder selected';
+            folderPathElement.textContent = 'None';
             folderPathElement.classList.remove('text-success');
             folderPathElement.classList.add('text-muted');
         }
         
         const selectBtn = document.getElementById('selectFolderBtn');
         if (selectBtn) {
-            selectBtn.innerHTML = '<i class="fas fa-folder-open me-2"></i>Select Folder';
+            selectBtn.innerHTML = '<i class="fas fa-folder-open me-1"></i>Folder';
             selectBtn.classList.remove('btn-outline-success');
             selectBtn.classList.add('btn-outline-info');
         }
@@ -1349,6 +1358,161 @@ class StreamVault {
         if (folderInput) {
             folderInput.value = '';
         }
+    }
+    
+    renderPlaylistsGrid() {
+        const grid = document.getElementById('playlistsList');
+        
+        if (!grid) return;
+        
+        // Filter to show only playlists
+        const playlists = this.channelData?.playlists || [];
+        
+        if (playlists.length === 0) {
+            grid.innerHTML = `
+                <div class="text-center text-muted py-4">
+                    <i class="fas fa-list-ul fa-2x mb-2"></i>
+                    <p>No playlists found</p>
+                </div>
+            `;
+            return;
+        }
+        
+        const playlistsHtml = playlists.map(playlist => {
+            const safeTitle = this.escapeHtml(playlist.title);
+            const thumbnail = playlist.thumbnail || this.getDefaultPlaylistThumbnail();
+            
+            return `
+                <div class="playlist-card" onclick="streamVault.openPlaylist('${playlist.id}')">
+                    <img src="${thumbnail}" 
+                         alt="${safeTitle}" 
+                         class="playlist-thumbnail" 
+                         loading="lazy"
+                         onerror="this.src='${this.getDefaultPlaylistThumbnail()}';">
+                    <div class="playlist-title" title="${safeTitle}">${safeTitle}</div>
+                    <div class="playlist-meta">
+                        <span><i class="fas fa-video me-1"></i>${playlist.video_count || 0} videos</span>
+                        ${playlist.updated ? `<span><i class="fas fa-clock me-1"></i>${this.formatDate(playlist.updated)}</span>` : ''}
+                    </div>
+                </div>
+            `;
+        }).join('');
+        
+        grid.innerHTML = playlistsHtml;
+    }
+    
+    getDefaultPlaylistThumbnail() {
+        return 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjgwIiBoZWlnaHQ9IjEyMCIgdmlld0JveD0iMCAwIDI4MCAxMjAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyODAiIGhlaWdodD0iMTIwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0xMjAgNjBMMTQwIDQ4VjcyTDEyMCA2MFoiIGZpbGw9IiM5Q0EzQUYiLz4KPHN2ZyB4PSI5MCIgeT0iNDAiIHdpZHRoPSIxMDAiIGhlaWdodD0iNDAiPgo8cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjQiIGZpbGw9IiNEMUQ1REIiLz4KPHJlY3QgeT0iOCIgd2lkdGg9IjgwIiBoZWlnaHQ9IjQiIGZpbGw9IiNEMUQ1REIiLz4KPHJlY3QgeT0iMTYiIHdpZHRoPSI2MCIgaGVpZ2h0PSI0IiBmaWxsPSIjRDFENURCIi8+Cjwvc3ZnPgo8L3N2Zz4=';
+    }
+    
+    async openPlaylist(playlistId) {
+        const playlist = this.channelData?.playlists?.find(p => p.id === playlistId);
+        if (!playlist) return;
+        
+        this.currentPlaylist = playlist;
+        
+        // Show loading
+        document.getElementById('playlistsList').classList.add('d-none');
+        document.getElementById('playlistDetail').classList.remove('d-none');
+        
+        // Update header
+        document.getElementById('currentPlaylistTitle').textContent = playlist.title;
+        document.getElementById('currentPlaylistMeta').textContent = `${playlist.video_count || 0} videos`;
+        
+        // Show loading skeleton for videos
+        const videosGrid = document.getElementById('playlistVideosGrid');
+        videosGrid.innerHTML = `
+            <div class="text-center py-4">
+                <div class="loading-spinner"></div>
+                <p class="text-muted mt-2">Loading playlist videos...</p>
+            </div>
+        `;
+        
+        try {
+            // Fetch playlist videos
+            const response = await fetch('/api/analyze-playlist', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ url: playlist.url })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success && data.playlist.entries) {
+                this.renderPlaylistVideos(data.playlist.entries);
+            } else {
+                throw new Error(data.error || 'Failed to load playlist videos');
+            }
+        } catch (error) {
+            console.error('Playlist loading error:', error);
+            videosGrid.innerHTML = `
+                <div class="text-center text-muted py-4">
+                    <i class="fas fa-exclamation-triangle fa-2x mb-2"></i>
+                    <p>Failed to load playlist videos</p>
+                    <small>${error.message}</small>
+                </div>
+            `;
+        }
+    }
+    
+    renderPlaylistVideos(videos) {
+        const grid = document.getElementById('playlistVideosGrid');
+        
+        if (!videos || videos.length === 0) {
+            grid.innerHTML = `
+                <div class="text-center text-muted py-4">
+                    <i class="fas fa-inbox fa-2x mb-2"></i>
+                    <p>No videos in this playlist</p>
+                </div>
+            `;
+            return;
+        }
+        
+        const videosHtml = videos.map(video => {
+            const isSelected = this.selectedVideos.has(video.id);
+            const thumbnail = this.getValidThumbnail(video);
+            const safeTitle = this.escapeHtml(video.title);
+            
+            return `
+                <div class="video-item ${isSelected ? 'selected' : ''}" data-video-id="${video.id}" onclick="streamVault.toggleVideoSelection('${video.id}')">
+                    <input type="checkbox" class="form-check-input video-checkbox" 
+                           ${isSelected ? 'checked' : ''} 
+                           onchange="streamVault.toggleVideoSelection('${video.id}')" 
+                           onclick="event.stopPropagation();">
+                    <div class="position-relative">
+                        <img src="${thumbnail}" 
+                             alt="${safeTitle}" 
+                             class="video-thumbnail" 
+                             loading="lazy"
+                             onerror="this.src='${this.getDefaultPlaylistThumbnail()}';">
+                        ${video.duration ? `<span class="video-duration">${this.formatDuration(video.duration)}</span>` : ''}
+                    </div>
+                    <div class="video-info">
+                        <div class="video-title" title="${safeTitle}">${safeTitle}</div>
+                        <div class="video-meta">
+                            ${video.view_count ? `<span><i class="fas fa-eye me-1"></i>${this.formatCount(video.view_count)} views</span>` : ''}
+                            ${video.upload_date ? `<span><i class="fas fa-calendar me-1"></i>${this.formatDate(video.upload_date)}</span>` : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+        
+        grid.innerHTML = videosHtml;
+        
+        // Add videos to current filtered list for selection functionality
+        this.filteredVideos = videos;
+        this.updateSelectionSummary();
+    }
+    
+    showPlaylistsList() {
+        document.getElementById('playlistDetail').classList.add('d-none');
+        document.getElementById('playlistsList').classList.remove('d-none');
+        this.currentPlaylist = null;
+        this.selectedVideos.clear();
+        this.updateSelectionSummary();
     }
 }
 

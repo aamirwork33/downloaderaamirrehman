@@ -324,26 +324,26 @@
                     </ul>
 
                     <!-- Controls Row -->
-                    <div class="row mb-3">
+                    <div class="row mb-2">
                         <div class="col-md-6">
-                            <div class="d-flex gap-2">
-                                <button class="btn btn-outline-primary btn-sm" id="selectAllBtn">
-                                    <i class="fas fa-check-square me-1"></i>Select All
+                            <div class="d-flex gap-1">
+                                <button class="btn btn-outline-primary btn-xs" id="selectAllBtn">
+                                    <i class="fas fa-check-square me-1"></i>All
                                 </button>
-                                <button class="btn btn-outline-secondary btn-sm" id="unselectAllBtn">
-                                    <i class="fas fa-square me-1"></i>Unselect All
+                                <button class="btn btn-outline-secondary btn-xs" id="unselectAllBtn">
+                                    <i class="fas fa-square me-1"></i>None
                                 </button>
                             </div>
                         </div>
                         <div class="col-md-6">
-                            <div class="d-flex gap-2">
-                                <select class="form-select form-select-sm" id="sortSelect">
-                                    <option value="newest">Newest First</option>
-                                    <option value="oldest">Oldest First</option>
+                            <div class="d-flex gap-1">
+                                <select class="form-select form-select-xs" id="sortSelect">
+                                    <option value="newest">Newest</option>
+                                    <option value="oldest">Oldest</option>
                                     <option value="most_viewed">Most Viewed</option>
-                                    <option value="title">Title A-Z</option>
+                                    <option value="title">A-Z</option>
                                 </select>
-                                <input type="text" class="form-control form-control-sm" id="searchInput" placeholder="Search videos...">
+                                <input type="text" class="form-control form-control-xs" id="searchInput" placeholder="Search...">
                             </div>
                         </div>
                     </div>
@@ -366,8 +366,27 @@
                         
                         <!-- Playlists Tab -->
                         <div class="tab-pane fade" id="playlists" role="tabpanel">
-                            <div class="video-grid" id="playlistsGrid">
-                                <!-- Playlists will be loaded here -->
+                            <div id="playlistsView">
+                                <!-- Playlists list view -->
+                                <div id="playlistsList" class="playlists-grid">
+                                    <!-- Playlists will be loaded here -->
+                                </div>
+                                
+                                <!-- Individual playlist view -->
+                                <div id="playlistDetail" class="playlist-detail d-none">
+                                    <div class="playlist-header mb-3">
+                                        <button class="btn btn-outline-secondary btn-xs" id="backToPlaylistsBtn">
+                                            <i class="fas fa-arrow-left me-1"></i>Back
+                                        </button>
+                                        <div class="playlist-info mt-2">
+                                            <h6 id="currentPlaylistTitle" class="mb-1"></h6>
+                                            <small class="text-muted" id="currentPlaylistMeta"></small>
+                                        </div>
+                                    </div>
+                                    <div class="video-grid" id="playlistVideosGrid">
+                                        <!-- Playlist videos will be loaded here -->
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -380,28 +399,28 @@
                             <span class="text-muted ms-2">•</span>
                             <span id="estimatedSize" class="text-muted ms-2">0 MB estimated</span>
                         </div>
-                        <div class="d-flex gap-3 align-items-center">
+                        <div class="d-flex gap-2 align-items-center flex-wrap">
                             <div class="folder-selection d-flex align-items-center">
                                 <input type="file" id="folderInput" webkitdirectory directory style="display: none;">
-                                <button class="btn btn-outline-info btn-sm" id="selectFolderBtn">
-                                    <i class="fas fa-folder-open me-2"></i>Select Folder
+                                <button class="btn btn-outline-info btn-xs" id="selectFolderBtn">
+                                    <i class="fas fa-folder-open me-1"></i>Folder
                                 </button>
-                                <span class="text-muted ms-2" id="selectedFolderPath">No folder selected</span>
+                                <span class="text-muted ms-1 small" id="selectedFolderPath">None</span>
                             </div>
-                            <div class="download-options d-flex gap-2">
-                                <select class="form-select form-select-sm" id="modalFormatSelect">
+                            <div class="download-options d-flex gap-1">
+                                <select class="form-select form-select-xs" id="modalFormatSelect">
                                     <option value="mp4">MP4</option>
                                     <option value="mp3">MP3</option>
                                 </select>
-                                <select class="form-select form-select-sm" id="modalQualitySelect">
+                                <select class="form-select form-select-xs" id="modalQualitySelect">
                                     <option value="1080p">1080p</option>
                                     <option value="720p" selected>720p</option>
                                     <option value="480p">480p</option>
                                     <option value="360p">360p</option>
                                 </select>
                             </div>
-                            <button class="btn btn-success btn-lg" id="downloadSelectedBtn" disabled>
-                                <i class="fas fa-download me-2"></i>Download Selected
+                            <button class="btn btn-success btn-sm" id="downloadSelectedBtn" disabled>
+                                <i class="fas fa-download me-1"></i>Download
                             </button>
                         </div>
                     </div>
