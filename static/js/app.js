@@ -106,14 +106,21 @@ class StreamVault {
             this.updateEstimatedSize();
         });
         
-        // Folder selection
-        document.getElementById('selectFolderBtn').addEventListener('click', () => {
-            this.selectDownloadFolder();
-        });
+        // Folder selection - check if elements exist first
+        const selectFolderBtn = document.getElementById('selectFolderBtn');
+        const folderInput = document.getElementById('folderInput');
         
-        document.getElementById('folderInput').addEventListener('change', (e) => {
-            this.handleFolderSelection(e);
-        });
+        if (selectFolderBtn) {
+            selectFolderBtn.addEventListener('click', () => {
+                this.selectDownloadFolder();
+            });
+        }
+        
+        if (folderInput) {
+            folderInput.addEventListener('change', (e) => {
+                this.handleFolderSelection(e);
+            });
+        }
     }
     
     validateUrl(url, context) {
@@ -1283,7 +1290,10 @@ class StreamVault {
     
     selectDownloadFolder() {
         // Trigger the hidden file input to open folder selection dialog
-        document.getElementById('folderInput').click();
+        const folderInput = document.getElementById('folderInput');
+        if (folderInput) {
+            folderInput.click();
+        }
     }
     
     handleFolderSelection(event) {
@@ -1294,9 +1304,11 @@ class StreamVault {
             
             // Update the UI to show selected folder
             const folderPathElement = document.getElementById('selectedFolderPath');
-            folderPathElement.textContent = folderPath;
-            folderPathElement.classList.remove('text-muted');
-            folderPathElement.classList.add('text-success');
+            if (folderPathElement) {
+                folderPathElement.textContent = folderPath;
+                folderPathElement.classList.remove('text-muted');
+                folderPathElement.classList.add('text-success');
+            }
             
             // Store the selected folder path
             this.selectedFolderPath = folderPath;
@@ -1306,27 +1318,37 @@ class StreamVault {
             
             // Update button text to show folder is selected
             const selectBtn = document.getElementById('selectFolderBtn');
-            selectBtn.innerHTML = '<i class="fas fa-check-circle me-2"></i>Folder Selected';
-            selectBtn.classList.remove('btn-outline-info');
-            selectBtn.classList.add('btn-outline-success');
+            if (selectBtn) {
+                selectBtn.innerHTML = '<i class="fas fa-check-circle me-2"></i>Folder Selected';
+                selectBtn.classList.remove('btn-outline-info');
+                selectBtn.classList.add('btn-outline-success');
+            }
         }
     }
     
     resetFolderSelection() {
         // Reset folder selection when modal closes or resets
         this.selectedFolderPath = null;
+        
         const folderPathElement = document.getElementById('selectedFolderPath');
-        folderPathElement.textContent = 'No folder selected';
-        folderPathElement.classList.remove('text-success');
-        folderPathElement.classList.add('text-muted');
+        if (folderPathElement) {
+            folderPathElement.textContent = 'No folder selected';
+            folderPathElement.classList.remove('text-success');
+            folderPathElement.classList.add('text-muted');
+        }
         
         const selectBtn = document.getElementById('selectFolderBtn');
-        selectBtn.innerHTML = '<i class="fas fa-folder-open me-2"></i>Select Folder';
-        selectBtn.classList.remove('btn-outline-success');
-        selectBtn.classList.add('btn-outline-info');
+        if (selectBtn) {
+            selectBtn.innerHTML = '<i class="fas fa-folder-open me-2"></i>Select Folder';
+            selectBtn.classList.remove('btn-outline-success');
+            selectBtn.classList.add('btn-outline-info');
+        }
         
         // Clear the file input
-        document.getElementById('folderInput').value = '';
+        const folderInput = document.getElementById('folderInput');
+        if (folderInput) {
+            folderInput.value = '';
+        }
     }
 }
 
