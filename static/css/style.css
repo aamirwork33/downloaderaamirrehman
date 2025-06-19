@@ -297,6 +297,87 @@ body {
     margin: 0;
 }
 
+/* Responsive Design */
+@media (max-width: 768px) {
+    .container {
+        padding: 0 15px;
+    }
+    
+    .tab-content .btn {
+        font-size: 0.875rem;
+        padding: 8px 16px;
+    }
+    
+    .card-header h5 {
+        font-size: 1.1rem;
+    }
+    
+    .download-thumbnail {
+        width: 60px;
+        height: 34px;
+    }
+    
+    .download-title {
+        font-size: 0.85rem;
+    }
+    
+    .format-badge,
+    .quality-badge {
+        font-size: 0.65rem;
+        padding: 1px 6px;
+    }
+    
+    .nav-tabs .nav-link {
+        font-size: 0.85rem;
+        padding: 8px 12px;
+    }
+    
+    .modal-dialog {
+        margin: 10px;
+        max-width: calc(100% - 20px);
+    }
+    
+    .channel-analyzer-modal .modal-body {
+        padding: 15px;
+    }
+    
+    .video-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+    
+    .video-card {
+        padding: 12px;
+    }
+    
+    .video-thumbnail {
+        width: 80px;
+        height: 45px;
+    }
+}
+
+@media (max-width: 576px) {
+    .btn-group .btn {
+        font-size: 0.8rem;
+        padding: 6px 12px;
+    }
+    
+    .download-meta {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+    }
+    
+    .download-stats {
+        font-size: 0.75rem;
+    }
+    
+    .channel-header .btn {
+        font-size: 0.8rem;
+        padding: 6px 12px;
+    }
+}
+
 .download-meta {
     display: flex;
     gap: 8px;
