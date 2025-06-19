@@ -1658,27 +1658,8 @@ class StreamVault {
                 console.error('Grid classes:', grid.className);
                 console.error('Grid ID:', grid.id);
                 
-                // Force the grid to be visible first
-                grid.style.cssText = `
-                    display: block !important;
-                    visibility: visible !important;
-                    opacity: 1 !important;
-                    background: #f0f0f0 !important;
-                    border: 2px solid blue !important;
-                    padding: 20px !important;
-                    min-height: 300px !important;
-                    width: 100% !important;
-                `;
-                
-                // Add a highly visible test item
-                grid.innerHTML = `
-                    <div style="display: block !important; background: red !important; color: white !important; padding: 20px !important; margin: 10px 0 !important; border: 3px solid black !important; font-size: 16px !important; font-weight: bold !important;">
-                        🔴 TEST VIDEO ITEM - If you see this red box, the grid container works
-                    </div>
-                    <div style="display: block !important; background: green !important; color: white !important; padding: 20px !important; margin: 10px 0 !important; border: 3px solid black !important; font-size: 16px !important; font-weight: bold !important;">
-                        🟢 SECOND TEST ITEM - Videos should appear here
-                    </div>
-                ` + grid.innerHTML;
+                console.log('No video items found in renderPlaylistVideos, but this should not happen if videos array has content');
+                return;
             }
             
             videoItems.forEach((item, index) => {
@@ -1689,7 +1670,7 @@ class StreamVault {
                     visibility: visible !important;
                     opacity: 1 !important;
                     background: rgba(255, 255, 255, 0.98) !important;
-                    border: 2px solid red !important;
+                    border: 1px solid rgba(102, 126, 234, 0.3) !important;
                     border-radius: 8px !important;
                     padding: 12px !important;
                     margin-bottom: 8px !important;

@@ -30,7 +30,7 @@ class DownloadManager:
                 url
             ]
             
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
             
             if result.returncode != 0:
                 logging.error(f"yt-dlp error: {result.stderr}")
@@ -343,24 +343,49 @@ class DownloadManager:
                 return None
             
             entries = []
+            playlist_info = {}
+            
             for line in result.stdout.strip().split('\n'):
                 if line.strip():
                     try:
                         entry = json.loads(line)
-                        if entry.get('_type') == 'url':
+                        
+                        # Extract playlist metadata from any entry that has it
+                        if not playlist_info and 'playlist' in entry:
+                            playlist_info = {
+                                'title': entry.get('playlist', 'Unknown Playlist'),
+                                'uploader': entry.get('playlist_uploader', 'Unknown'),
+                                'count': entry.get('playlist_count', 0)
+                            }
+                        
+                        # Add individual video entries (not playlist metadata)
+                        if entry.get('_type') != 'playlist' and entry.get('id'):
+                            # Get the best thumbnail
+                            thumbnail = ''
+                            if entry.get('thumbnails'):
+                                # Find the best quality thumbnail
+                                for thumb in entry['thumbnails']:
+                                    if thumb.get('url'):
+                                        thumbnail = thumb['url']
+                                        break
+                            
                             entries.append({
                                 'id': entry.get('id', ''),
                                 'title': entry.get('title', 'Unknown'),
-                                'url': entry.get('url', ''),
+                                'url': entry.get('webpage_url', entry.get('url', '')),
                                 'duration': entry.get('duration', 0),
                                 'uploader': entry.get('uploader', ''),
                                 'webpage_url': entry.get('webpage_url', ''),
                                 'view_count': entry.get('view_count', 0),
                                 'upload_date': entry.get('upload_date', ''),
-                                'thumbnail': entry.get('thumbnail', '')
+                                'thumbnail': thumbnail or entry.get('thumbnail', ''),
+                                'description': entry.get('description', '')[:200] if entry.get('description') else ''
                             })
-                    except json.JSONDecodeError:
+                    except json.JSONDecodeError as e:
+                        logging.error(f"JSON decode error: {e}")
                         continue
+            
+            logging.info(f"Found {len(entries)} videos in playlist {url}")
             
             if not entries:
                 return None
