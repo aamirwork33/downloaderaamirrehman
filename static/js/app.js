@@ -1432,7 +1432,7 @@ class StreamVault {
         
         // Filter to show only playlists
         const playlists = this.channelData?.playlists || [];
-        console.log('Rendering playlists:', playlists.length);
+        console.log('Rendering playlists:', playlists.length, playlists);
         
         if (playlists.length === 0) {
             grid.innerHTML = `
@@ -1446,7 +1446,11 @@ class StreamVault {
         
         const playlistsHtml = playlists.map(playlist => {
             const safeTitle = this.escapeHtml(playlist.title);
-            const thumbnail = playlist.thumbnail || this.getDefaultPlaylistThumbnail();
+            const thumbnail = playlist.thumbnail && playlist.thumbnail.trim() !== '' 
+                ? playlist.thumbnail 
+                : this.getDefaultPlaylistThumbnail();
+            
+            console.log('Playlist:', playlist.title, 'Thumbnail:', thumbnail);
             
             return `
                 <div class="playlist-card" onclick="streamVault.openPlaylist('${playlist.id}')">

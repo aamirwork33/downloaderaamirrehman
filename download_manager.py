@@ -228,13 +228,36 @@ class DownloadManager:
                         try:
                             entry = json.loads(line)
                             if entry.get('_type') == 'url' and 'playlist' in entry.get('url', ''):
+                                # Get more detailed playlist info
+                                playlist_url = entry.get('url', '')
+                                playlist_id = entry.get('id', '')
+                                
+                                # Try to get thumbnail from playlist info
+                                thumbnail_url = entry.get('thumbnail', '')
+                                if not thumbnail_url:
+                                    # Try to get first video thumbnail as playlist thumbnail
+                                    try:
+                                        thumb_cmd = [
+                                            'yt-dlp',
+                                            '--dump-json',
+                                            '--no-download',
+                                            '--playlist-items', '1',
+                                            playlist_url
+                                        ]
+                                        thumb_result = subprocess.run(thumb_cmd, capture_output=True, text=True, timeout=15)
+                                        if thumb_result.returncode == 0 and thumb_result.stdout.strip():
+                                            thumb_data = json.loads(thumb_result.stdout.strip().split('\n')[0])
+                                            thumbnail_url = thumb_data.get('thumbnail', '')
+                                    except:
+                                        pass
+                                
                                 playlists.append({
-                                    'id': entry.get('id', ''),
+                                    'id': playlist_id,
                                     'title': entry.get('title', 'Unknown Playlist'),
-                                    'url': entry.get('url', ''),
-                                    'webpage_url': entry.get('webpage_url', ''),
+                                    'url': playlist_url,
+                                    'webpage_url': entry.get('webpage_url', playlist_url),
                                     'video_count': entry.get('playlist_count', 0),
-                                    'thumbnail': entry.get('thumbnail', ''),
+                                    'thumbnail': thumbnail_url,
                                     'updated': entry.get('upload_date', '')
                                 })
                         except json.JSONDecodeError:
