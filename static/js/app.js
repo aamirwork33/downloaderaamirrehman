@@ -471,16 +471,29 @@ class StreamVault {
     populateChannelHeader() {
         const { channel_info } = this.channelData;
         
-        document.getElementById('channelName').textContent = channel_info.channel_name || 'Unknown Channel';
-        document.getElementById('channelAvatar').src = channel_info.channel_avatar || 'https://via.placeholder.com/64x64?text=CH';
-        document.getElementById('subscriberCount').textContent = this.formatCount(channel_info.subscriber_count) + ' subscribers';
-        document.getElementById('totalVideoCount').textContent = this.channelData.total_videos + ' videos';
+        // Set channel name with fallback
+        const channelName = channel_info?.channel_name || 'Unknown Channel';
+        document.getElementById('channelName').textContent = channelName;
+        
+        // Set avatar with fallback
+        const avatarUrl = channel_info?.channel_avatar || 'https://via.placeholder.com/64x64?text=' + encodeURIComponent(channelName.charAt(0));
+        document.getElementById('channelAvatar').src = avatarUrl;
+        document.getElementById('channelAvatar').onerror = function() {
+            this.src = 'https://via.placeholder.com/64x64?text=' + encodeURIComponent(channelName.charAt(0));
+        };
+        
+        // Set subscriber count
+        const subCount = channel_info?.subscriber_count || 0;
+        document.getElementById('subscriberCount').textContent = this.formatCount(subCount) + ' subscribers';
+        // Calculate and display total video count
+        const totalVideos = (this.channelData.total_videos || 0) + (this.channelData.total_shorts || 0);
+        document.getElementById('totalVideoCount').textContent = totalVideos + ' videos';
     }
     
     updateTabCounts() {
-        document.getElementById('allVideosCount').textContent = this.channelData.total_videos;
-        document.getElementById('shortsCount').textContent = this.channelData.total_shorts;
-        document.getElementById('playlistsCount').textContent = this.channelData.total_playlists;
+        document.getElementById('allVideosCount').textContent = this.channelData.total_videos || 0;
+        document.getElementById('shortsCount').textContent = this.channelData.total_shorts || 0;
+        document.getElementById('playlistsCount').textContent = this.channelData.total_playlists || 0;
     }
     
     updateVideoDisplay() {

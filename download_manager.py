@@ -103,13 +103,14 @@ class DownloadManager:
     def _get_channel_info(self, url: str) -> Optional[Dict]:
         """Get detailed channel information with categorized content"""
         try:
-            # Get channel metadata
+            # Get channel metadata with better approach
             metadata_cmd = [
                 'yt-dlp',
                 '--dump-json',
                 '--no-download',
                 '--playlist-items', '1',
                 '--ignore-errors',
+                '--flat-playlist',
                 url
             ]
             
@@ -118,17 +119,39 @@ class DownloadManager:
             
             if metadata_result.returncode == 0 and metadata_result.stdout.strip():
                 try:
-                    metadata = json.loads(metadata_result.stdout)
+                    # Try to get channel info from the first line
+                    first_line = metadata_result.stdout.strip().split('\n')[0]
+                    metadata = json.loads(first_line)
+                    
+                    # Extract channel information
                     channel_info = {
-                        'channel_name': metadata.get('uploader', metadata.get('channel', 'Unknown Channel')),
-                        'channel_id': metadata.get('uploader_id', metadata.get('channel_id', '')),
-                        'channel_url': metadata.get('uploader_url', metadata.get('channel_url', url)),
+                        'channel_name': (metadata.get('uploader') or 
+                                       metadata.get('channel') or 
+                                       metadata.get('playlist_uploader') or 
+                                       'Unknown Channel'),
+                        'channel_id': (metadata.get('uploader_id') or 
+                                     metadata.get('channel_id') or 
+                                     metadata.get('playlist_uploader_id') or ''),
+                        'channel_url': (metadata.get('uploader_url') or 
+                                      metadata.get('channel_url') or 
+                                      metadata.get('playlist_uploader_url') or url),
                         'subscriber_count': metadata.get('subscriber_count', 0),
-                        'channel_avatar': metadata.get('avatar', metadata.get('thumbnail', '')),
+                        'channel_avatar': (metadata.get('uploader_avatar') or 
+                                         metadata.get('avatar') or 
+                                         metadata.get('thumbnail') or ''),
                         'description': metadata.get('description', '')
                     }
-                except json.JSONDecodeError:
-                    pass
+                except (json.JSONDecodeError, IndexError):
+                    # Fallback: try to get basic info from URL
+                    if '/channel/' in url:
+                        channel_id = url.split('/channel/')[-1].split('/')[0]
+                        channel_info['channel_id'] = channel_id
+                    elif '/@' in url:
+                        handle = url.split('/@')[-1].split('/')[0]
+                        channel_info['channel_name'] = handle
+                    elif '/c/' in url:
+                        custom_name = url.split('/c/')[-1].split('/')[0]
+                        channel_info['channel_name'] = custom_name
             
             # Get all videos from channel - Remove limit to get all videos
             all_videos_cmd = [
@@ -302,6 +325,14 @@ class DownloadManager:
             logging.info(f"Found {len(playlists)} playlists for channel {url}")
             for playlist in playlists:
                 logging.info(f"Playlist: {playlist.get('title')} ({playlist.get('video_count')} videos)")
+            
+            # Set fallback channel name if still empty
+            if not channel_info.get('channel_name') or channel_info.get('channel_name') == 'Unknown Channel':
+                if all_videos and len(all_videos) > 0:
+                    # Try to get channel name from first video's uploader
+                    first_video = all_videos[0]
+                    if first_video.get('uploader'):
+                        channel_info['channel_name'] = first_video['uploader']
             
             return {
                 'type': 'channel',
