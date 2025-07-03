@@ -475,19 +475,40 @@ class StreamVault {
         const channelName = channel_info?.channel_name || 'Unknown Channel';
         document.getElementById('channelName').textContent = channelName;
         
-        // Set avatar with fallback
-        const avatarUrl = channel_info?.channel_avatar || 'https://via.placeholder.com/64x64?text=' + encodeURIComponent(channelName.charAt(0));
-        document.getElementById('channelAvatar').src = avatarUrl;
-        document.getElementById('channelAvatar').onerror = function() {
-            this.src = 'https://via.placeholder.com/64x64?text=' + encodeURIComponent(channelName.charAt(0));
+        // Set avatar with better fallback logic
+        const avatarElement = document.getElementById('channelAvatar');
+        let avatarUrl = channel_info?.channel_avatar;
+        
+        // If no avatar URL, try to generate YouTube avatar from channel ID
+        if (!avatarUrl && channel_info?.channel_id) {
+            avatarUrl = `https://yt3.ggpht.com/a/default-user=s64-c-k-c0x00ffffff-no-rj`;
+        }
+        
+        // Final fallback to initial-based placeholder
+        if (!avatarUrl) {
+            const initial = channelName.charAt(0).toUpperCase();
+            avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(initial)}&size=64&background=667eea&color=fff&bold=true`;
+        }
+        
+        avatarElement.src = avatarUrl;
+        
+        // Improved error handling for avatar
+        avatarElement.onerror = function() {
+            const initial = channelName.charAt(0).toUpperCase();
+            this.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(initial)}&size=64&background=667eea&color=fff&bold=true`;
+            this.onerror = null; // Prevent infinite loop
         };
         
-        // Set subscriber count
+        // Set subscriber count with better formatting
         const subCount = channel_info?.subscriber_count || 0;
-        document.getElementById('subscriberCount').textContent = this.formatCount(subCount) + ' subscribers';
+        const subscriberText = subCount > 0 ? 
+            `${this.formatCount(subCount)} subscribers` : 
+            'Subscriber count unavailable';
+        document.getElementById('subscriberCount').textContent = subscriberText;
+        
         // Calculate and display total video count
         const totalVideos = (this.channelData.total_videos || 0) + (this.channelData.total_shorts || 0);
-        document.getElementById('totalVideoCount').textContent = totalVideos + ' videos';
+        document.getElementById('totalVideoCount').textContent = `${totalVideos} videos`;
     }
     
     updateTabCounts() {

@@ -103,55 +103,99 @@ class DownloadManager:
     def _get_channel_info(self, url: str) -> Optional[Dict]:
         """Get detailed channel information with categorized content"""
         try:
-            # Get channel metadata with better approach
+            # First, try to get comprehensive channel metadata using a single video with full metadata
             metadata_cmd = [
                 'yt-dlp',
                 '--dump-json',
                 '--no-download',
                 '--playlist-items', '1',
                 '--ignore-errors',
-                '--flat-playlist',
-                url
+                '--extract-flat',
+                url + '/videos'
             ]
             
             metadata_result = subprocess.run(metadata_cmd, capture_output=True, text=True, timeout=60)
-            channel_info = {}
+            channel_info = {
+                'channel_name': 'Unknown Channel',
+                'channel_id': '',
+                'channel_url': url,
+                'subscriber_count': 0,
+                'channel_avatar': '',
+                'description': ''
+            }
             
+            # Try to extract from first video's metadata
             if metadata_result.returncode == 0 and metadata_result.stdout.strip():
                 try:
-                    # Try to get channel info from the first line
                     first_line = metadata_result.stdout.strip().split('\n')[0]
                     metadata = json.loads(first_line)
                     
-                    # Extract channel information
-                    channel_info = {
-                        'channel_name': (metadata.get('uploader') or 
-                                       metadata.get('channel') or 
-                                       metadata.get('playlist_uploader') or 
-                                       'Unknown Channel'),
-                        'channel_id': (metadata.get('uploader_id') or 
-                                     metadata.get('channel_id') or 
-                                     metadata.get('playlist_uploader_id') or ''),
-                        'channel_url': (metadata.get('uploader_url') or 
-                                      metadata.get('channel_url') or 
-                                      metadata.get('playlist_uploader_url') or url),
-                        'subscriber_count': metadata.get('subscriber_count', 0),
-                        'channel_avatar': (metadata.get('uploader_avatar') or 
-                                         metadata.get('avatar') or 
-                                         metadata.get('thumbnail') or ''),
-                        'description': metadata.get('description', '')
-                    }
+                    # Extract available channel information
+                    if metadata.get('uploader'):
+                        channel_info['channel_name'] = metadata['uploader']
+                    if metadata.get('uploader_id'):
+                        channel_info['channel_id'] = metadata['uploader_id']
+                    if metadata.get('uploader_url'):
+                        channel_info['channel_url'] = metadata['uploader_url']
+                    if metadata.get('channel_follower_count'):
+                        channel_info['subscriber_count'] = metadata['channel_follower_count']
+                    elif metadata.get('subscriber_count'):
+                        channel_info['subscriber_count'] = metadata['subscriber_count']
+                    if metadata.get('uploader_avatar'):
+                        channel_info['channel_avatar'] = metadata['uploader_avatar']
+                    elif metadata.get('thumbnail'):
+                        channel_info['channel_avatar'] = metadata['thumbnail']
+                        
                 except (json.JSONDecodeError, IndexError):
-                    # Fallback: try to get basic info from URL
-                    if '/channel/' in url:
-                        channel_id = url.split('/channel/')[-1].split('/')[0]
-                        channel_info['channel_id'] = channel_id
-                    elif '/@' in url:
-                        handle = url.split('/@')[-1].split('/')[0]
-                        channel_info['channel_name'] = handle
-                    elif '/c/' in url:
-                        custom_name = url.split('/c/')[-1].split('/')[0]
-                        channel_info['channel_name'] = custom_name
+                    pass
+            
+            # If we still don't have good info, try getting a single video with full metadata
+            if not channel_info.get('channel_avatar') or channel_info.get('subscriber_count', 0) == 0:
+                try:
+                    single_video_cmd = [
+                        'yt-dlp',
+                        '--dump-json',
+                        '--no-download',
+                        '--playlist-items', '1',
+                        '--ignore-errors',
+                        url + '/videos'
+                    ]
+                    
+                    single_result = subprocess.run(single_video_cmd, capture_output=True, text=True, timeout=30)
+                    if single_result.returncode == 0 and single_result.stdout.strip():
+                        single_data = json.loads(single_result.stdout.strip().split('\n')[0])
+                        
+                        # Update with more complete info if available
+                        if single_data.get('uploader') and channel_info['channel_name'] == 'Unknown Channel':
+                            channel_info['channel_name'] = single_data['uploader']
+                        if single_data.get('channel_follower_count'):
+                            channel_info['subscriber_count'] = single_data['channel_follower_count']
+                        elif single_data.get('subscriber_count'):
+                            channel_info['subscriber_count'] = single_data['subscriber_count']
+                        if single_data.get('uploader_avatar'):
+                            channel_info['channel_avatar'] = single_data['uploader_avatar']
+                        if single_data.get('uploader_id'):
+                            channel_info['channel_id'] = single_data['uploader_id']
+                        if single_data.get('uploader_url'):
+                            channel_info['channel_url'] = single_data['uploader_url']
+                        if single_data.get('description'):
+                            channel_info['description'] = single_data['description']
+                            
+                except Exception as e:
+                    logging.debug(f"Could not get single video metadata: {e}")
+            
+            # Fallback: extract basic info from URL if still needed
+            if channel_info['channel_name'] == 'Unknown Channel':
+                if '/channel/' in url:
+                    channel_id = url.split('/channel/')[-1].split('/')[0]
+                    channel_info['channel_id'] = channel_id
+                    channel_info['channel_name'] = f"Channel {channel_id[:8]}..."
+                elif '/@' in url:
+                    handle = url.split('/@')[-1].split('/')[0]
+                    channel_info['channel_name'] = f"@{handle}"
+                elif '/c/' in url:
+                    custom_name = url.split('/c/')[-1].split('/')[0]
+                    channel_info['channel_name'] = custom_name
             
             # Get all videos from channel - Remove limit to get all videos
             all_videos_cmd = [
